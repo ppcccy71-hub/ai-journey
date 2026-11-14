@@ -3,27 +3,55 @@
 > 目标：从"调用一个 API"到"做出一个能给别人用的命令行工具"，并学会用 Git 管理它。
 > 时间：20–30 小时。产出物：流式 CLI 聊天工具 v0（多轮、可切模型、有成本统计）。
 
+---
+
+## 文件索引（按学习天数）
+
+| 天 | 学习日志 | 代码 | 主题 | 状态 |
+|---|---|---|---|---|
+| Day 1 | `day1.md` | `day1_check_env.py`<br>`day1_first_call.py` | 环境自检、首次调用、手写 SSE、token / 温度 / 截断 | ✅ 完成 |
+| Day 2 | `day2.md` | `day2_chat_skeleton.py`<br>`day2_chat_solution.py`<br>`day2_demos.py` | 生成器与惰性求值、多轮对话、上下文成本 | ✅ 完成 |
+| Day 3 | `day3.md` | `day3_server.py`<br>`day3_client.py`<br>`day3_stateless_demo.py` | FastAPI、无状态、服务端 SSE、JSON 校验 | ✅ 完成 |
+| Day 4 | `day4.md` | `day4_server.py`<br>`day4_bench.py`<br>`day4_path_demo.py` | 事件循环、`def` vs `async def`、会话存储（内存→文件）、pathlib | ✅ 完成 |
+| Day 5–7 | — | — | 见下方任务清单 | ⏳ |
+
+**通用文件**
+
+| 文件 | 作用 |
+|---|---|
+| `.env` / `.env.example` | 密钥与模型配置（`.env` 不入库） |
+| `curl-cheatsheet.md` | curl 速查，含 PowerShell 引号坑 |
+| `_template.md` | 新一天日志的模板 |
+
+**命名规则（以后照此扩展）**
+
+- `dayN_xxx.py` = 第 N 天写的代码
+- `dayN.md` = 第 N 天的学习日志（复习用）
+- 跨天复用的工具函数放在最早需要它的那天文件里，后续 `import` 引用
+
+---
+
 ## 任务清单
 
 ### Day 1（今天，2–3 小时）
 
-- [ ] 跑 `python check_env.py`，把每个 `[WARN]` / `[FAIL]` 处理掉
+- [ ] 跑 `python day1_check_env.py`，把每个 `[WARN]` / `[FAIL]` 处理掉
 - [ ] 拿到一个 API Key（DeepSeek / 通义 / 智谱 / OpenAI 任选，OpenAI 兼容即可）
 - [ ] 复制 `.env.example` 为 `.env`，填 `LLM_BASE_URL` / `LLM_API_KEY` / `LLM_MODEL`
-- [ ] `python first_call.py --mock` —— 先看流式机制，不花钱
-- [ ] `python first_call.py "用一句话解释什么是 token"` —— 真机跑通
+- [ ] `python day1_first_call.py --mock` —— 先看流式机制，不花钱
+- [ ] `python day1_first_call.py "用一句话解释什么是 token"` —— 真机跑通
 - [ ] 加 `--show-raw` 再跑一次，**看清每一帧长什么样**
 - [ ] 加 `--think` 跑一个需要推理的问题（如"9.11 和 9.8 谁大"），对比有无思维链
 
 ### Day 2（2–3 小时）
 
-- [ ] 通读 `first_call.py`，用自己的话回答：
+- [ ] 通读 `day1_first_call.py`，用自己的话回答：
       1. `stream: true` 改变了什么？
       2. 为什么 `yield` 能实现"边生成边打印"？
       3. `TTFT` 和"总耗时"分别影响什么用户体验？
 - [ ] 改 `--system` 和 `--temperature`（试 0 / 0.7 / 1.5），记录输出差异
       （注意：DeepSeek 思考模式下 temperature 不生效，要在普通模式下测）
-- [ ] 把观察写进 `notes.md`
+- [ ] 把观察写进当天的 `dayN.md`（Day 1 就是 `day1.md`）
 
 ### Day 3（3–4 小时）
 

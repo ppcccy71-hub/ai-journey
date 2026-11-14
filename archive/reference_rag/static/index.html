@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个人知识助手 v1</title>
+<style>
+  :root { --line:#e5e7eb; --muted:#6b7280; --accent:#2563eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+         background:#f8fafc; color:#111827; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 120px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .answer { white-space: pre-wrap; line-height: 1.8; min-height: 80px; font-size: 15px; }
+  .sources { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .source { font-size: 13px; color: var(--muted); margin: 4px 0; }
+  .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .bar { position: fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); }
+  .bar-in { max-width:760px; margin:0 auto; padding:12px 20px; display:flex; gap:8px; }
+  input { flex:1; padding:12px 14px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
+  button { padding:12px 20px; border:0; border-radius:10px; background:var(--accent); color:#fff;
+           font-size:15px; cursor:pointer; }
+  button:disabled { opacity:.5; cursor: not-allowed; }
+  .refused { color:#b45309; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>个人知识助手 v1</h1>
+  <div class="sub">基于 docs/ 里的资料回答，带引用；没有依据时会拒答。</div>
+
+  <div class="card">
+    <div id="answer" class="answer">问点什么吧，比如「RAG 有哪几个步骤？」</div>
+    <div id="sources" class="sources" style="display:none"></div>
+    <div id="meta" class="meta"></div>
+  </div>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <input id="q" placeholder="输入问题，回车发送" autofocus>
+    <button id="send">发送</button>
+  </div>
+</div>
+
+<script>
+const q = document.getElementById('q');
+const send = document.getElementById('send');
+const answerEl = document.getElementById('answer');
+const sourcesEl = document.getElementById('sources');
+const metaEl = document.getElementById('meta');
+
+async function ask() {
+  const question = q.value.trim();
+  if (!question) return;
+
+  q.value = '';
+  send.disabled = true;
+  answerEl.textContent = '';
+  answerEl.classList.remove('refused');
+  sourcesEl.style.display = 'none';
+  metaEl.textContent = '检索中……';
+
+  try {
+    const res = await fetch('/ask/stream', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ question }),
+    });
+    if (!res.ok) { answerEl.textContent = '请求失败：' + res.status; return; }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const data = line.slice(5).trim();
+        if (data === '[DONE]') continue;
+
+        let evt;
+        try { evt = JSON.parse(data); } catch (_) { continue; }
+
+        if (evt.type === 'sources') {
+          if (evt.sources.length === 0) {
+            metaEl.textContent = '未检索到相关资料';
+          } else {
+            sourcesEl.innerHTML = evt.sources.map(s =>
+              `<div class="source">[${s.index}] ${s.source} · 匹配度 ${s.score}</div>`).join('');
+            sourcesEl.style.display = 'block';
+            metaEl.textContent = '生成中……';
+          }
+        } else if (evt.type === 'delta') {
+          answerEl.textContent += evt.text;
+        } else if (evt.type === 'refused') {
+          answerEl.textContent = evt.text;
+          answerEl.classList.add('refused');
+        } else if (evt.type === 'done') {
+          const u = evt.usage || {};
+          metaEl.textContent = `${(evt.latency_ms/1000).toFixed(2)}s · `
+            + `token ${u.prompt_tokens || 0}→${u.completion_tokens || 0} · `
+            + `$${(evt.cost || 0).toFixed(6)}`;
+        }
+      }
+    }
+  } catch (e) {
+    answerEl.textContent = '出错了：' + e;
+  } finally {
+    send.disabled = false;
+    q.focus();
+  }
+}
+
+send.addEventListener('click', ask);
+q.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+</script>
+</body>
+</html>

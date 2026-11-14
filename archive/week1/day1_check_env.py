@@ -3,7 +3,7 @@
 """环境自检：工具链 / 密钥 / API 连通性。
 
 只用标准库，装任何包之前就能跑：
-    python check_env.py
+    python day1_check_env.py
 """
 import json
 import os
@@ -60,6 +60,13 @@ def check_tools():
             print(f"{tag} {name:<7} 未安装 —— {note}")
 
 
+def build_opener():
+    """默认绕过系统代理，避免 Clash 等代理软件未启动时请求被拦。"""
+    proxy = os.environ.get("LLM_PROXY", "").strip()
+    handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy} if proxy else {})
+    return urllib.request.build_opener(handler)
+
+
 def check_key():
     base = os.environ.get("LLM_BASE_URL", "").rstrip("/")
     key = os.environ.get("LLM_API_KEY", "")
@@ -73,7 +80,7 @@ def check_key():
     url = f"{base}/models"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}"})
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
+        with build_opener().open(req, timeout=15) as resp:
             data = json.loads(resp.read().decode("utf-8"))
         ids = [m.get("id") for m in data.get("data", [])][:5]
         print(f"{OK} 接口连通，可用模型示例：{', '.join(ids)}")

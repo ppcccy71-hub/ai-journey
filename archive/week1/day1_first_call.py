@@ -6,11 +6,11 @@
 一次请求 = 一个 HTTP POST，返回的不是 JSON，而是一串 "data: {...}" 文本行（SSE）。
 
 用法：
-    python first_call.py --mock                    # 没有 key 也能跑，看流式机制
-    python first_call.py "用一句话解释什么是 RAG"
-    python first_call.py --show-raw "你好"          # 打印服务端原始数据帧
-    python first_call.py --think "9.11 和 9.8 谁大"  # 开启思考模式，看思维链
-    python first_call.py --compat "你好"            # 换非 DeepSeek 服务商时用
+    python day1_first_call.py --mock                    # 没有 key 也能跑，看流式机制
+    python day1_first_call.py "用一句话解释什么是 RAG"
+    python day1_first_call.py --show-raw "你好"          # 打印服务端原始数据帧
+    python day1_first_call.py --think "9.11 和 9.8 谁大"  # 开启思考模式，看思维链
+    python day1_first_call.py --compat "你好"            # 换非 DeepSeek 服务商时用
 """
 import argparse
 import json
@@ -27,9 +27,19 @@ except Exception:
 
 
 def load_dotenv(path=".env"):
-    if not os.path.exists(path):
+    """读取 .env。当前目录没有就向上找（.env 统一放在 ai-journey 根目录）。"""
+    from pathlib import Path
+
+    p = Path(path)
+    if not p.exists():
+        base = Path(__file__).resolve().parent
+        for cand in (base / path, base.parent / path, base.parent.parent / path):
+            if cand.exists():
+                p = cand
+                break
+    if not p.exists():
         return
-    with open(path, encoding="utf-8") as f:
+    with open(p, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -50,6 +60,19 @@ def build_payload(model, messages, temperature, max_tokens, think, compat):
         # DeepSeek 专有参数：默认思考模式是开的，这里显式关掉，否则会先刷一大段思维链
         payload["thinking"] = {"type": "enabled" if think else "disabled"}
     return payload
+
+
+def build_opener():
+    """默认绕过系统代理。
+
+    Windows 上 urllib 会自动读取注册表里的代理设置（如 Clash 的 127.0.0.1:7897），
+    代理软件没启动或规则不对时，请求会被拦成 SSL EOF / 502，非常迷惑。
+    DeepSeek 国内可直连，所以默认不走代理。
+    确实需要代理时，在 .env 里加一行：LLM_PROXY=http://127.0.0.1:7897
+    """
+    proxy = os.environ.get("LLM_PROXY", "").strip()
+    handler = urllib.request.ProxyHandler({"http": proxy, "https": proxy} if proxy else {})
+    return urllib.request.build_opener(handler)
 
 
 def stream_mock(text):
@@ -76,13 +99,13 @@ def stream_real(base, key, payload, show_raw):
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    with build_opener().open(req, timeout=180) as resp:
         for raw in resp:                      # 一行一行读，不做整体缓冲
             line = raw.decode("utf-8", "replace").strip()
             if not line:
                 continue
             if show_raw:
-                print(f"  << {line[:160]}")
+                print(f"  << {line}")
             if not line.startswith("data:"):   # 跳过 event: / id: / 注释行
                 continue
             data = line[5:].strip()
@@ -138,12 +161,15 @@ def main():
     chars = 0
     reasoning_chars = 0
     usage = None
+    finish_reason = None   # stop = 自然结束；length = 撞到 max_tokens 被截断
     phase = None           # 用来区分"思考中"和"正式回答"
     try:
         for obj in stream:
             if obj.get("usage"):
                 usage = obj["usage"]
             for choice in obj.get("choices", []):
+                if choice.get("finish_reason"):
+                    finish_reason = choice["finish_reason"]
                 delta = choice.get("delta") or {}
                 # 思考模式下，思维链走 reasoning_content；普通模式只走 content
                 rc = delta.get("reasoning_content")
@@ -187,6 +213,9 @@ def main():
     print(f"首字延迟 TTFT : {ttft:.2f}s" if ttft else "首字延迟 TTFT : n/a")
     print(f"总耗时        : {total:.2f}s   正式输出 {chars} 字" +
           (f"，思维链 {reasoning_chars} 字" if reasoning_chars else ""))
+    reason_text = {"stop": "模型自然说完", "length": "达到 max_tokens 上限，被硬截断"}.get(
+        finish_reason, str(finish_reason))
+    print(f"结束原因      : {finish_reason}（{reason_text}）")
     print(f"token         : 输入 {pt} + 输出 {ct} = {pt + ct}")
     print(f"本次成本      : 约 {cost:.6f} {currency}" +
           ("" if price_in else "（未配置单价，只统计 token）"))
