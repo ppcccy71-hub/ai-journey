@@ -1,0 +1,22 @@
+[
+  {"id": "h01", "question": "处理一百万个输出字，非高峰大概要多少钱？", "type": "answer", "expect": ["0.6"]},
+  {"id": "h02", "question": "白天高峰的时候价格会怎么变？", "type": "answer", "expect": ["翻倍", "两倍"]},
+  {"id": "h03", "question": "不想让它先推理再回答，请求里要加什么？", "type": "answer", "expect": ["thinking", "disabled"]},
+  {"id": "h04", "question": "一次最多能放多少内容进去？", "type": "answer", "expect": ["1m", "100 万", "100万"]},
+  {"id": "h05", "question": "它默认会先想一遍再说话吗？", "type": "answer", "expect": ["默认", "开启", "是的"]},
+  {"id": "h06", "question": "密钥失效时接口返回哪个错误码？", "type": "answer", "expect": ["401"]},
+  {"id": "h07", "question": "请求发得太密会被怎么拦？", "type": "answer", "expect": ["429", "频繁"]},
+  {"id": "h08", "question": "账户余额不足对应哪个错误？", "type": "answer", "expect": ["402"]},
+  {"id": "h09", "question": "前端传了个空字符串，后端一般回什么状态码？", "type": "answer", "expect": ["422"]},
+  {"id": "h10", "question": "怎么让某个字段不能是空的？", "type": "answer", "expect": ["min_length", "至少", "必填"]},
+  {"id": "h11", "question": "接口文档页面是手写的还是自动出的？", "type": "answer", "expect": ["自动", "生成"]},
+  {"id": "h12", "question": "浏览器能逐字收到内容，用的是什么格式？", "type": "answer", "expect": ["event-stream", "sse", "流式"]},
+  {"id": "h13", "question": "用同步函数写的接口会堵住别的请求吗？", "type": "answer", "expect": ["线程池", "不会", "不影响"]},
+  {"id": "h14", "question": "先把资料找出来再让模型回答，这套方法叫什么？", "type": "answer", "expect": ["rag", "检索增强"]},
+  {"id": "h15", "question": "一块资料切多大比较合适？", "type": "answer", "expect": ["200", "500"]},
+  {"id": "h16", "question": "搜代码里的函数名，哪种检索更靠谱？", "type": "answer", "expect": ["关键词", "字面", "bm25"]},
+  {"id": "h17", "question": "deepseek 的发票怎么开？", "type": "refuse"},
+  {"id": "h18", "question": "FastAPI 支持 WebSocket 吗？", "type": "refuse"},
+  {"id": "h19", "question": "公司裁员赔偿怎么算？", "type": "refuse"},
+  {"id": "h20", "question": "怎么把服务部署到 Kubernetes？", "type": "refuse"}
+]

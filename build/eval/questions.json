@@ -1,0 +1,22 @@
+[
+  {"id": "q01", "question": "deepseek-flash 非高峰时段的输出价格是多少？", "type": "answer", "expect": ["0.6"]},
+  {"id": "q02", "question": "高峰时段的价格怎么变化？", "type": "answer", "expect": ["翻倍", "两倍", "2 倍", "2倍"]},
+  {"id": "q03", "question": "怎么关闭思考模式？", "type": "answer", "expect": ["thinking", "disabled"]},
+  {"id": "q04", "question": "deepseek-flash 的上下文长度是多少？", "type": "answer", "expect": ["1m", "100 万", "100万"]},
+  {"id": "q05", "question": "思考模式默认是开启的吗？", "type": "answer", "expect": ["默认", "开启"]},
+  {"id": "q06", "question": "401 错误是什么意思？", "type": "answer", "expect": ["key", "无效"]},
+  {"id": "q07", "question": "429 错误代表什么？", "type": "answer", "expect": ["频繁", "太多"]},
+  {"id": "q08", "question": "402 错误代表什么？", "type": "answer", "expect": ["余额"]},
+  {"id": "q09", "question": "FastAPI 里请求体校验失败会返回什么状态码？", "type": "answer", "expect": ["422"]},
+  {"id": "q10", "question": "Field 里的 min_length=1 是什么意思？", "type": "answer", "expect": ["必填", "至少", "一个字符"]},
+  {"id": "q11", "question": "/docs 页面是怎么来的？", "type": "answer", "expect": ["自动", "生成"]},
+  {"id": "q12", "question": "StreamingResponse 的媒体类型应该设成什么？", "type": "answer", "expect": ["event-stream", "text/event-stream"]},
+  {"id": "q13", "question": "普通的 def 路由在哪个地方执行？", "type": "answer", "expect": ["线程池", "线程"]},
+  {"id": "q14", "question": "RAG 有哪四个步骤？", "type": "answer", "expect": ["索引", "检索", "增强", "生成"]},
+  {"id": "q15", "question": "RAG 切块时每块建议多大？", "type": "answer", "expect": ["200", "500"]},
+  {"id": "q16", "question": "关键词检索在什么场景下效果好？", "type": "answer", "expect": ["专有名词", "字面", "代码"]},
+  {"id": "q17", "question": "公司的年假政策是什么？", "type": "refuse"},
+  {"id": "q18", "question": "产品保修期多久？", "type": "refuse"},
+  {"id": "q19", "question": "明天北京天气怎么样？", "type": "refuse"},
+  {"id": "q20", "question": "怎么申请差旅报销？", "type": "refuse"}
+]
