@@ -7,12 +7,14 @@
     messages   消息（属于哪个会话、角色、内容）
     usage_log  每次调用的成本与耗时（用于统计）
 """
+import os
 import sqlite3
 import time
 import uuid
 from pathlib import Path
 
-DB = Path(__file__).resolve().parent / "assistant.db"
+# 默认放在代码目录，Docker 里用环境变量指到挂载卷
+DB = Path(os.environ.get("ASSISTANT_DB") or (Path(__file__).resolve().parent / "assistant.db"))
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (

@@ -10,7 +10,6 @@
 import re
 from pathlib import Path
 
-from sqlalchemy.dialects.postgresql.operators import OVERLAP
 
 DOCS_DIR = Path(__file__).parent / "docs"
 CHUNK_SIZE = 600 # 目标块大小（字符）

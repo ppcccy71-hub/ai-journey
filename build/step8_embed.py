@@ -25,6 +25,8 @@ CANDIDATES = ["text-embedding-v4","text-embedding-v3","text-embedding-v2","text-
 
 
 def load_env():
+    if not ENV.exists():          # Docker 里没有 .env，配置由环境变量注入
+        return
     for line in ENV.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:

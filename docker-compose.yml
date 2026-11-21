@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    image: ai-assistant:latest
+    container_name: ai-assistant
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      ASSISTANT_DB: /data/assistant.db
+      AGENT_WORKSPACE: /data/agent_workspace
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

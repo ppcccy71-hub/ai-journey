@@ -32,3 +32,6 @@ frontend/dist/
 
 # Agent 运行产物
 build/agent_workspace/
+
+# Docker 持久化数据
+data/

@@ -78,7 +78,20 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 
 访问 http://127.0.0.1:8000，接口文档 http://127.0.0.1:8000/docs。
 
-方式二：开发模式（前后端分离，支持热更新）
+方式二：Docker
+
+```powershell
+docker compose up -d --build    # 构建并后台启动
+docker compose logs -f          # 查看日志
+docker compose down             # 停止
+```
+
+镜像为多阶段构建：Node 编译前端 → Python 运行时托管 API 和静态页面。
+数据库和 Agent 生成的文件挂载在 `./data`，删除容器不会丢数据；`.env` 通过 `env_file` 注入，不打包进镜像。
+
+国内网络拉取基础镜像较慢，可在 Docker Desktop → Settings → Docker Engine 中配置 `registry-mirrors`。
+
+方式三：开发模式（前后端分离，支持热更新）
 
 ```powershell
 # 终端 1
