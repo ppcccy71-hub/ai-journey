@@ -10,6 +10,21 @@
 - **会话管理**：新建、切换、删除会话，历史消息持久化
 - **用量统计**：问答次数、token、成本、平均延迟，按天聚合
 
+## 知识库
+
+当前索引的是 **FastAPI 官方文档**（`docs/en/docs`）：158 篇 Markdown，切分为 2321 块，向量文件约 25MB。
+
+重建索引：
+
+```powershell
+python ingest_docs.py --dry-run   # 先看切块数量
+python ingest_docs.py             # 调用 embedding 生成 vectors.json
+```
+
+脚本会处理 frontmatter、`{!...!}` 引用、`///` 指令和代码块；支持断点续传，超过 8192 token 的块会被跳过。
+
+如果换成自己的文档，把 Markdown 放进 `build/docs/`，用 `python step8_embed.py` 重建即可（那套脚本按字符切块）。
+
 ## 技术栈
 
 | 层 | 选型 |
@@ -108,10 +123,11 @@ npm run dev
 
 ### 重建索引
 
-修改 `build/docs/` 后需要重新生成向量：
+FastAPI 文档：`python ingest_docs.py`（见上文「知识库」）。
+
+`build/docs/` 下的自有文档：
 
 ```powershell
-cd build
 python step8_embed.py
 ```
 
@@ -134,7 +150,7 @@ python step8_embed.py
 
 ## 评测
 
-知识库 3 篇文档，切块 300 字，共 9 块；评测集 20 题（16 道可答、4 道应拒答）。
+早期的检索对比实验在 3 篇示例文档上完成（共 9 块，评测集 20 题，存档于 `eval/legacy_demo/`）：
 
 | 检索方式 | 阈值 | top-k | 准确率 |
 |---|---|---|---|
@@ -143,15 +159,21 @@ python step8_embed.py
 | 向量 | 0.45 | 3 | 80% |
 | 向量 | 0.45 | 5 | 90% |
 
-单次问答约 2.3 秒，成本约 $0.00012。
+换成 FastAPI 文档（2321 块）后，抽样验证的检索相似度：
 
-Agent 任务评测共 10 个任务，通过 9 个；越界写文件的请求被模型拒绝。
+| 查询 | 命中文件 | 相似度 |
+|---|---|---|
+| 怎么在 FastAPI 里声明请求体 | `tutorial/body.md` | 0.736 |
+| 怎么给查询参数设置默认值 | `tutorial/query-params.md` | 0.771 |
+| How do I add a query parameter with a default value | `tutorial/query-params.md` | 0.771 |
 
-完整数据见 [RESULTS.md](RESULTS.md)。
+中文提问可以检索英文文档。完整数据见 [RESULTS.md](RESULTS.md)。
 
 ## 已知限制
 
-- 知识库规模小（9 块），上千块需要专用向量数据库
+- 向量检索是纯 Python 逐条计算余弦相似度，2300 块时单次约 0.5 秒；上万块需要专用向量库
+- 向量索引是 25MB 的 JSON，启动时整体加载进内存
+- 只索引了英文文档，中文文档需要另建索引
 - SQLite 单机存储，不支持多实例部署
 - Agent 每次任务独立，不带会话记忆
 - 未实现鉴权，仅供本机使用
