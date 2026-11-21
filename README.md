@@ -21,20 +21,29 @@
 
 ```
 ai-journey/
-├── README.md            # 你正在看的这个文件
-├── PLAN.md              # 12 周路线（项目驱动）
-├── progress.md          # 做到哪了
+├── README.md            # 学习方式与规则
+├── PLAN.md              # 路线（项目驱动）
+├── progress.md          # 做到哪了、数字多少
+├── start.ps1            # 一键启动（构建前端 + 起服务）
 ├── .env                 # 密钥与模型配置（不入库）
 │
 ├── basics/              # 知识示例库：6 个概念，逐个跑
 │
-├── build/               # 从零构建的"个人工作助手"（主战场）
-│   ├── README.md        # 产品定义 + 构建顺序 + 验收
-│   └── docs/            # 知识库资料
+├── build/               # ★ 后端：RAG + Agent + 会话 + 统计
+│   ├── app.py
+│   ├── llm.py / store.py
+│   ├── step*.py
+│   ├── docs/ eval/
+│   └── README.md        # 项目说明（架构、接口、指标）
+│
+├── frontend/            # ★ 前端：React + Vite
+│   ├── src/
+│   ├── vite.config.js
+│   └── package.json
 │
 └── archive/             # 归档，平时不用看
-    ├── week1/           # 第 1 周材料（环境、SSE、多轮、并发）
-    └── reference_rag/   # 参考实现（卡住时才能翻，看完合上重写）
+    ├── week1/
+    └── reference_rag/
 ```
 
 ## 三条硬规则
