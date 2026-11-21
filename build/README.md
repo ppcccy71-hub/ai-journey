@@ -1,59 +1,60 @@
-# 个人工作助手
+# 个人知识助手
 
-> 一个本地可运行的个人工作助手：**文档问答（RAG）+ 工具调用（Agent）+ 使用统计**。
-> 单端口部署，`start.ps1` 一键启动。
+基于 DeepSeek 的本地知识库问答与工具调用助手。支持带引用的文档问答、多步任务的 Agent、多会话记录和用量统计。
 
-## 三个能力
+## 功能
 
-| 能力 | 说明 | 关键指标 |
-|---|---|---|
-| 知识问答 | 从本地文档检索，带 `[编号]` 引用，无依据时拒答 | 准确率 **90%**（20 题改写集） |
-| Agent | 会查资料、算数、读写文件，多步完成任务 | 任务成功率 **9/10** |
-| 统计 | 会话/消息/问答量、token、成本、延迟看板 | 单次约 **$0.0001** |
+- **文档问答**：向量检索 top-5 片段，模型依据片段回答并标注引用编号；没有相关资料时拒答
+- **流式输出**：SSE 逐字返回，前端边收边显示
+- **Agent**：5 个工具（检索、四则运算、读文件、写文件、列目录），模型自行决定调用顺序，最多 6 步
+- **会话管理**：新建、切换、删除会话，历史消息持久化
+- **用量统计**：问答次数、token、成本、平均延迟，按天聚合
 
-## 架构
+## 技术栈
+
+| 层 | 选型 |
+|---|---|
+| 后端 | Python 3.11、FastAPI、SQLite |
+| 前端 | React 18、Vite |
+| 生成模型 | DeepSeek `deepseek-flash` |
+| 向量模型 | 阿里云百炼 `text-embedding-v3`（1024 维） |
+
+## 目录结构
 
 ```
-浏览器（React + Vite）
-   │  /api/*
-   ▼
-FastAPI（build/app.py）
-   ├── /ask, /ask/stream   检索 → 拼提示词 → DeepSeek → 流式返回 + 引用
-   ├── /agent/run          工具循环：模型决定调哪个工具，代码执行
-   ├── /sessions           会话与消息（SQLite）
-   └── /stats, /stats/daily 用量与成本聚合
-        │
-        ├── DeepSeek API      生成（deepseek-flash）
-        ├── 阿里云百炼         向量（text-embedding-v3，1024 维）
-        └── SQLite            会话、消息、成本日志（assistant.db）
-```
+build/
+├── app.py               FastAPI 应用（问答 / Agent / 会话 / 统计）
+├── llm.py               模型调用与成本计算
+├── store.py             SQLite 存储层
+├── step1_load_docs.py   读取文档
+├── step2_chunks.py      文本切块
+├── step3_retrieve.py    关键词检索
+├── step8_embed.py       生成向量索引
+├── step9_vector.py      向量检索
+├── step13_agent.py      Agent 循环与工具定义
+├── step14_task_eval.py  Agent 任务评测
+├── test_safety.py       路径安全单元测试
+├── docs/                知识库文档
+├── eval/                评测集
+├── vectors.json         向量索引
+└── assistant.db         会话与成本数据（不入库）
 
-**一次问答的链路**：问题 → embedding → 和 N 个块算余弦 → top 5 →
-拼上下文 → 模型带引用回答 → 写库 + 记成本。
+frontend/
+├── src/api.js           接口封装
+├── src/views/           问答 / Agent / 统计 三个页面
+└── vite.config.js       开发代理配置
+```
 
 ## 快速开始
 
-```powershell
-cd C:\Users\20647\Desktop\AI_WorkPlace\ai-journey
-powershell -ExecutionPolicy Bypass -File .\start.ps1
-```
+### 环境要求
 
-脚本会：装前端依赖（首次）→ 构建前端 → 启动后端 → 打开浏览器。
-服务地址 `http://127.0.0.1:8000`，接口文档 `/docs`。
+- Python 3.10+
+- Node.js 18+
 
-**手动启动（开发模式，前后端分离）**
+### 配置
 
-```powershell
-# 窗口 1
-cd build
-python app.py
-
-# 窗口 2
-cd frontend
-npm run dev        # http://localhost:5173，/api 自动代理到 8000
-```
-
-**配置**：仓库根目录 `.env`
+在仓库根目录创建 `.env`：
 
 ```ini
 LLM_BASE_URL=https://api.deepseek.com
@@ -67,67 +68,82 @@ BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 EMBED_MODEL=text-embedding-v3
 ```
 
-## 接口
+### 启动
 
-| 方法 | 路径 | 作用 |
+方式一：一键启动（会自动构建前端并托管，单端口）
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start.ps1
+```
+
+访问 http://127.0.0.1:8000，接口文档 http://127.0.0.1:8000/docs。
+
+方式二：开发模式（前后端分离，支持热更新）
+
+```powershell
+# 终端 1
+cd build
+python app.py
+
+# 终端 2
+cd frontend
+npm install
+npm run dev
+```
+
+访问 http://localhost:5173，`/api` 由 Vite 代理到 8000。
+
+### 重建索引
+
+修改 `build/docs/` 后需要重新生成向量：
+
+```powershell
+cd build
+python step8_embed.py
+```
+
+## API
+
+| 方法 | 路径 | 说明 |
 |---|---|---|
-| POST | `/ask` | 问答（可带 `session_id` 存历史） |
+| POST | `/ask` | 问答，可带 `session_id` |
 | POST | `/ask/stream` | 流式问答（SSE） |
 | POST | `/agent/run` | 执行 Agent 任务 |
 | POST | `/sessions` | 新建会话 |
 | GET | `/sessions` | 会话列表 |
 | GET | `/sessions/{id}` | 会话消息 |
 | DELETE | `/sessions/{id}` | 删除会话 |
-| GET | `/stats` | 总量统计 |
+| GET | `/stats` | 汇总统计 |
 | GET | `/stats/daily?days=7` | 按天统计 |
 | GET | `/health` | 健康检查 |
 
-前端统一带 `/api` 前缀，后端用中间件剥掉——开发（Vite 代理）和生产（单端口）同一套代码。
+前端请求统一带 `/api` 前缀，后端中间件负责剥离；开发环境由 Vite 代理，生产环境由同一服务处理。
 
 ## 评测
 
-详见 [`RESULTS.md`](RESULTS.md)。
+知识库 3 篇文档，切块 300 字，共 9 块；评测集 20 题（16 道可答、4 道应拒答）。
 
-| 方案 | 阈值 | top-k | 准确率 |
+| 检索方式 | 阈值 | top-k | 准确率 |
 |---|---|---|---|
-| 关键词检索 | 0.1 | 3 | 70% |
-| + 查询改写 | 0.1 | 3 | 75% |
-| 向量检索 | 0.45 | 3 | 80% |
-| **向量检索** | **0.45** | **5** | **90%** |
+| 关键词 | 0.1 | 3 | 70% |
+| 关键词 + 查询改写 | 0.1 | 3 | 75% |
+| 向量 | 0.45 | 3 | 80% |
+| 向量 | 0.45 | 5 | 90% |
 
-Agent 任务评测：10 个任务，9 个通过（越界写入被模型主动拒绝）。
+单次问答约 2.3 秒，成本约 $0.00012。
 
-## 代码结构
+Agent 任务评测共 10 个任务，通过 9 个；越界写文件的请求被模型拒绝。
 
-```
-build/
-├── app.py               FastAPI 服务（问答 / Agent / 会话 / 统计）
-├── llm.py               模型调用与计费
-├── store.py             SQLite 存储层
-├── step1_load_docs.py   读文档
-├── step2_chunks.py      切块
-├── step3_retrieve.py    关键词检索
-├── step8_embed.py       向量化
-├── step9_vector.py      向量检索
-├── step13_agent.py      Agent 循环 + 工具
-├── step14_task_eval.py  任务评测
-├── test_safety.py       路径安全单元测试
-├── docs/                知识库（3 篇示例）
-├── eval/                评测集（问答 20×2、任务 10）
-├── vectors.json         向量索引
-└── assistant.db         会话与成本（不入库）
-```
+完整数据见 [RESULTS.md](RESULTS.md)。
 
 ## 已知限制
 
-- 知识库只有 9 块，规模小；上千块需换向量库（pgvector / Qdrant）
-- 单机 SQLite，不支持多实例部署
-- Agent 无会话记忆，每次任务独立
-- 没有鉴权，仅本机使用
-- 向量模型调用是同步阻塞的，并发靠线程池
+- 知识库规模小（9 块），上千块需要专用向量数据库
+- SQLite 单机存储，不支持多实例部署
+- Agent 每次任务独立，不带会话记忆
+- 未实现鉴权，仅供本机使用
+- 模型与向量调用为同步阻塞，并发依赖线程池
 
-## 下一步
+## License
 
-- Docker Compose 一键部署（B2）
-- 真实文档替换示例（50+ 篇，500+ 块）
-- 混合检索（BM25 + 向量）+ rerank
+MIT
