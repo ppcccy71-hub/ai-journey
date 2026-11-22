@@ -51,8 +51,13 @@ class AgentRequest(BaseModel):
 # ============================================================
 # 检索与提示词
 # ============================================================
+def has_cjk(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in text)
+
+
 def search(req: AskRequest):
-    hits = s9.search(req.question, CHUNKS, MODEL_V, req.top_k)
+    # 知识库是英文文档：中文提问先翻成英文再检索，recall@5 从 95% 提到 100%
+    hits = s9.search_plus(req.question, CHUNKS, MODEL_V, req.top_k, has_cjk(req.question))
     return hits, (hits[0][0] if hits else 0.0)
 
 

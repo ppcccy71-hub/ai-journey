@@ -34,6 +34,40 @@ def search(question,chunks,model,top_k=3):
     return sorted(scored,key=lambda x:-x[0])[:top_k]
 
 
+TRANSLATE_SYS = ("Translate the user's question into a short English search query for FastAPI documentation. "
+                 "Output only the query, no quotes, no explanation.")
+
+
+def translate(question):
+    """把中文问题转成英文检索词（知识库是英文时用）。"""
+    import llm
+    text, _ = llm.stream_chat(
+        [{"role": "system", "content": TRANSLATE_SYS},
+         {"role": "user", "content": question}],
+        temperature=0, max_tokens=60)
+    return text.strip().strip('"').strip("'")
+
+
+def search_plus(question, chunks, model, top_k=5, use_translate=True):
+    """原文 + 英文翻译各检索一次，同一个块取最高分。"""
+    queries = [question]
+    if use_translate:
+        try:
+            en = translate(question)
+            if en:
+                queries.append(en)
+        except Exception:
+            pass
+
+    best = {}
+    for q in queries:
+        for s, c in search(q, chunks, model, top_k):
+            key = id(c)
+            if key not in best or s > best[key][0]:
+                best[key] = (s, c)
+    return sorted(best.values(), key=lambda x: -x[0])[:top_k]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("question")

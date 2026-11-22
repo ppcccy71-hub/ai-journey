@@ -1,0 +1,22 @@
+[
+  {"id": "q01", "question": "怎么在 FastAPI 里声明请求体？", "expect": ["tutorial/body.md"]},
+  {"id": "q02", "question": "查询参数怎么设置默认值和可选值？", "expect": ["tutorial/query-params.md"]},
+  {"id": "q03", "question": "路径参数怎么限制必须大于 0？", "expect": ["tutorial/path-params-numeric-validations.md"]},
+  {"id": "q04", "question": "多个路由怎么共用同一段依赖逻辑？", "expect": ["tutorial/dependencies/index.md", "tutorial/dependencies/classes-as-dependencies.md", "tutorial/dependencies/dependencies-in-path-operation-decorators.md"]},
+  {"id": "q05", "question": "依赖里带 yield 的清理代码什么时候执行？", "expect": ["tutorial/dependencies/dependencies-with-yield.md"]},
+  {"id": "q06", "question": "怎么给整个应用加全局依赖？", "expect": ["tutorial/dependencies/global-dependencies.md"]},
+  {"id": "q07", "question": "怎么给每个响应加一个处理时间的响应头？", "expect": ["tutorial/middleware.md"]},
+  {"id": "q08", "question": "怎么直接返回 HTML 页面而不是 JSON？", "expect": ["advanced/custom-response.md"]},
+  {"id": "q09", "question": "怎么让接口只返回模型的部分字段？", "expect": ["tutorial/response-model.md"]},
+  {"id": "q10", "question": "怎么把创建成功的状态码改成 201？", "expect": ["tutorial/response-status-code.md"]},
+  {"id": "q11", "question": "怎么返回 404 并附带自定义错误信息？", "expect": ["tutorial/handling-errors.md"]},
+  {"id": "q12", "question": "怎么用 OAuth2 密码模式加 JWT 做登录？", "expect": ["tutorial/security/oauth2-jwt.md"]},
+  {"id": "q13", "question": "怎么在接口里获取当前登录用户？", "expect": ["tutorial/security/get-current-user.md"]},
+  {"id": "q14", "question": "怎么用 TestClient 写接口测试？", "expect": ["tutorial/testing.md"]},
+  {"id": "q15", "question": "异步接口的测试怎么写？", "expect": ["advanced/async-tests.md"]},
+  {"id": "q16", "question": "怎么在返回响应之后执行后台任务？", "expect": ["tutorial/background-tasks.md"]},
+  {"id": "q17", "question": "生产环境怎么开多个 worker 进程？", "expect": ["deployment/server-workers.md"]},
+  {"id": "q18", "question": "怎么用 Docker 部署 FastAPI？", "expect": ["deployment/docker.md"]},
+  {"id": "q19", "question": "怎么配置跨域 CORS？", "expect": ["tutorial/cors.md"]},
+  {"id": "q20", "question": "怎么挂载一个子应用？", "expect": ["advanced/sub-applications.md"]}
+]
