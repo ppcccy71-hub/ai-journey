@@ -32,9 +32,15 @@ HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 MULTI_NL = re.compile(r"\n{3,}")
 
 
+def keep_code(match):
+    """保留代码块，但超长的截断——具体用法（Path(gt=0)、HTTPException）都在代码里。"""
+    body = match.group(0)
+    return body if len(body) <= 600 else body[:600] + "\n```"
+
+
 def clean(text):
     text = FRONTMATTER.sub("", text)
-    text = CODE_BLOCK.sub("\n", text)
+    text = CODE_BLOCK.sub(keep_code, text)
     text = INCLUDE.sub("", text)
     text = DIRECTIVE.sub("", text)
     text = IMAGE.sub("", text)

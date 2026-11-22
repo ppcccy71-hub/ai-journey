@@ -18,9 +18,11 @@ def is_refusal(text):
     return any(k in text for k in ["没有相关信息", "没有找到", "资料中没有", "无法回答", "不知道"])
 
 def judge(item, text):
-    """answer 题：出现任一关键词算对；refuse 题：拒答话术或被阈值拒答都算对。"""
+    """refuse 题：拒答算对；answer 题：先排除拒答，再看关键词。"""
     if item["type"] == "refuse":
         return text.startswith("[拒答]") or  is_refusal(text)
+    if text.startswith("[拒答]") or is_refusal(text):
+        return False                      # 拒答不能因为提到术语就算答对
     return any(k.lower() in text.lower() for k in item.get("expect",[]))
 
 def main():
@@ -29,6 +31,7 @@ def main():
     ap.add_argument("--min-score", type=float, default=0.3)
     ap.add_argument("--top-k", type=int, default=3)
     ap.add_argument("--mode", choices=["keyword", "vector"], default="keyword")
+    ap.add_argument("--translate", action="store_true", help="中文问题先翻成英文再检索")
     args = ap.parse_args()
 
     items = json.loads((QUESTIONS.parent / args.file).read_text(encoding="utf-8"))
@@ -41,7 +44,10 @@ def main():
     for it in items:
 
         if args.mode == "vector":
-            hits = s9.search(it["question"], vchunks, model_v, args.top_k)
+            if args.translate:
+                hits = s9.search_plus(it["question"], vchunks, model_v, args.top_k, True)
+            else:
+                hits = s9.search(it["question"], vchunks, model_v, args.top_k)
         else:
             q_bg = bigrams(it["question"])
             hits = sorted(((score(q_bg, c["text"]), c) for c in chunks),
@@ -58,7 +64,7 @@ def main():
                 {"role":"system","content":SYSTEM},
                 {"role":"user","content":f"资料：\n{context}\n\n问题：{it['question']}\n\n请依据资料回答并标注 [编号]。"},
             ]
-            text,usage = llm.stream_chat(messages,temperature=0.2,max_tokens=400)
+            text,usage = llm.stream_chat(messages,temperature=0.0,max_tokens=400)
 
         ms = int((time.perf_counter() - t0) * 1000)
 

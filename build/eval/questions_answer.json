@@ -1,0 +1,23 @@
+[
+  {"id": "a01", "type": "answer", "question": "怎么在 FastAPI 里声明请求体？", "expect": ["BaseModel", "Pydantic"]},
+  {"id": "a02", "type": "answer", "question": "查询参数怎么设置默认值？", "expect": ["skip", "limit", "默认"]},
+  {"id": "a03", "type": "answer", "question": "路径参数怎么限制必须大于 0？", "expect": ["gt", "Path"]},
+  {"id": "a04", "type": "answer", "question": "多个路由怎么共用同一段依赖逻辑？", "expect": ["Depends"]},
+  {"id": "a05", "type": "answer", "question": "依赖里带 yield 的代码什么时候执行？", "expect": ["yield"]},
+  {"id": "a06", "type": "answer", "question": "怎么给整个应用加全局依赖？", "expect": ["dependencies", "APIRouter", "FastAPI"]},
+  {"id": "a07", "type": "answer", "question": "怎么给每个响应加一个处理时间的响应头？", "expect": ["X-Process-Time", "middleware", "中间件"]},
+  {"id": "a08", "type": "answer", "question": "怎么直接返回 HTML 页面？", "expect": ["HTMLResponse"]},
+  {"id": "a09", "type": "answer", "question": "怎么让接口只返回模型的部分字段？", "expect": ["response_model"]},
+  {"id": "a10", "type": "answer", "question": "怎么把创建成功的状态码改成 201？", "expect": ["201", "status_code"]},
+  {"id": "a11", "type": "answer", "question": "怎么返回 404 并附带自定义错误信息？", "expect": ["HTTPException", "404"]},
+  {"id": "a12", "type": "answer", "question": "怎么用 OAuth2 密码模式加 JWT 做登录？", "expect": ["JWT", "OAuth2PasswordBearer", "oauth2"]},
+  {"id": "a13", "type": "answer", "question": "怎么在接口里获取当前登录用户？", "expect": ["get_current_user", "current_user"]},
+  {"id": "a14", "type": "answer", "question": "怎么用 TestClient 写接口测试？", "expect": ["TestClient"]},
+  {"id": "a15", "type": "answer", "question": "怎么在返回响应之后执行后台任务？", "expect": ["BackgroundTasks", "background"]},
+
+  {"id": "r01", "type": "refuse", "question": "公司的年假政策是什么？"},
+  {"id": "r02", "type": "refuse", "question": "明天北京天气怎么样？"},
+  {"id": "r03", "type": "refuse", "question": "怎么用 Django ORM 定义模型？"},
+  {"id": "r04", "type": "refuse", "question": "FastAPI 作者最喜欢什么颜色？"},
+  {"id": "r05", "type": "refuse", "question": "怎么用 React 写一个登录页面？"}
+]
