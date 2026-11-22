@@ -32,7 +32,6 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 | 材料 | 路径 |
 |---|---|
 | 架构图 | `docs/architecture.svg` |
-| 演示脚本（3 分钟） | `docs/demo-script.md` |
 | 简历条目与面试追问 | `docs/resume.md` |
 | 评测数据 | `build/RESULTS.md` |
 | 项目说明 | `build/README.md` |
