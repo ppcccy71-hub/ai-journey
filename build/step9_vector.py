@@ -48,8 +48,8 @@ def translate(question):
     return text.strip().strip('"').strip("'")
 
 
-def search_plus(question, chunks, model, top_k=5, use_translate=True):
-    """原文 + 英文翻译各检索一次，同一个块取最高分。"""
+def build_queries(question, use_translate=True):
+    """原问题 + 英文翻译（只翻一次，两种块共用）。"""
     queries = [question]
     if use_translate:
         try:
@@ -58,14 +58,33 @@ def search_plus(question, chunks, model, top_k=5, use_translate=True):
                 queries.append(en)
         except Exception:
             pass
+    return queries
 
+
+def _merged(queries, subset, model, top_k):
     best = {}
     for q in queries:
-        for s, c in search(q, chunks, model, top_k):
+        for s, c in search(q, subset, model, top_k):
             key = id(c)
             if key not in best or s > best[key][0]:
                 best[key] = (s, c)
     return sorted(best.values(), key=lambda x: -x[0])[:top_k]
+
+
+def search_plus(question, chunks, model, top_k=5, use_translate=True):
+    """原文 + 英文翻译各检索一次，同一个块取最高分。"""
+    return _merged(build_queries(question, use_translate), chunks, model, top_k)
+
+
+def search_mixed(question, chunks, model, top_k=5, n_code=2, use_translate=True):
+    """双路召回：讲解块取 top_k-n_code，代码块取 n_code，合并后按分数排序。"""
+    prose = [c for c in chunks if c.get("kind", "prose") == "prose"]
+    code = [c for c in chunks if c.get("kind") == "code"]
+    queries = build_queries(question, use_translate)
+    hits = _merged(queries, prose, model, max(1, top_k - n_code))
+    if code:
+        hits += _merged(queries, code, model, n_code)
+    return sorted(hits, key=lambda x: -x[0])[:top_k]
 
 
 def main():

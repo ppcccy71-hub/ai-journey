@@ -32,7 +32,7 @@ def main():
 
     for it in items:
         t0 = time.perf_counter()
-        hits = s9.search_plus(it["question"], chunks, model, args.top_k, args.translate)
+        hits = s9.search_mixed(it["question"], chunks, model, args.top_k, 2, args.translate)
         ms = int((time.perf_counter() - t0) * 1000)
         total_ms += ms
 

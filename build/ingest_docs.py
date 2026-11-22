@@ -32,21 +32,29 @@ HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 MULTI_NL = re.compile(r"\n{3,}")
 
 
-def keep_code(match):
-    """保留代码块，但超长的截断——具体用法（Path(gt=0)、HTTPException）都在代码里。"""
-    body = match.group(0)
-    return body if len(body) <= 600 else body[:600] + "\n```"
-
-
-def clean(text):
+def clean_text(text):
+    """讲解块：去掉代码块，只留说明文字。"""
     text = FRONTMATTER.sub("", text)
-    text = CODE_BLOCK.sub(keep_code, text)
+    text = CODE_BLOCK.sub("\n", text)
     text = INCLUDE.sub("", text)
     text = DIRECTIVE.sub("", text)
     text = IMAGE.sub("", text)
     text = HTML_COMMENT.sub("", text)
     text = re.sub(r"[ \t]+", " ", text)
     return MULTI_NL.sub("\n\n", text).strip()
+
+
+def extract_code(body, head, rel, max_code=800):
+    """代码块：带标题上下文单独成块，供“怎么用”类问题检索。"""
+    out = []
+    for m in CODE_BLOCK.finditer(body):
+        code = m.group(0)
+        if len(code.strip("`\n ")) < 30:
+            continue
+        if len(code) > max_code:
+            code = code[:max_code] + "\n```"
+        out.append({"text": f"{head}\n\n{code}", "source": rel, "title": head, "kind": "code"})
+    return out
 
 
 def split_sections(text):
@@ -97,13 +105,15 @@ def build_chunks(max_chars=700, overlap=120):
     files = [p for p in sorted(DOCS_DIR.rglob("*.md")) if not p.name.startswith("_")]
     for path in files:
         rel = path.relative_to(DOCS_DIR).as_posix()
-        text = clean(path.read_text(encoding="utf-8"))
-        for h1, h2, body in split_sections(text):
-            if len(body) < 80:
-                continue
+        raw = path.read_text(encoding="utf-8")
+        for h1, h2, body in split_sections(raw):
             head = f"{h1} / {h2}" if h2 else h1
-            for piece in split_long(body, max_chars, overlap):
-                chunks.append({"text": f"{head}\n\n{piece}", "source": rel, "title": head})
+            prose = clean_text(body)
+            if len(prose) >= 80:
+                for piece in split_long(prose, max_chars, overlap):
+                    chunks.append({"text": f"{head}\n\n{piece}", "source": rel,
+                                   "title": head, "kind": "prose"})
+            chunks.extend(extract_code(body, head, rel))
     return files, chunks
 
 

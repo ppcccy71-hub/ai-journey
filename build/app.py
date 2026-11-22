@@ -57,7 +57,7 @@ def has_cjk(text: str) -> bool:
 
 def search(req: AskRequest):
     # 知识库是英文文档：中文提问先翻成英文再检索，recall@5 从 95% 提到 100%
-    hits = s9.search_plus(req.question, CHUNKS, MODEL_V, req.top_k, has_cjk(req.question))
+    hits = s9.search_mixed(req.question, CHUNKS, MODEL_V, req.top_k, 2, has_cjk(req.question))
     return hits, (hits[0][0] if hits else 0.0)
 
 
