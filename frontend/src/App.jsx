@@ -56,7 +56,11 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <h1>个人工作助手</h1>
+        <div className="brand">
+          <span className="dot" />
+          <h1>个人工作助手</h1>
+          <span className="tag">RAG + Agent</span>
+        </div>
         <nav>
           <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>
             知识问答

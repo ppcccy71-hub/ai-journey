@@ -11,6 +11,7 @@
 - **Agent**：5 个工具（检索、四则运算、读文件、写文件、列目录），模型自行决定调用顺序，最多 6 步
 - **会话管理**：新建、切换、删除会话，历史消息持久化
 - **用量统计**：问答次数、token、成本、平均延迟，按天聚合
+- **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
 
 ## 知识库
 
@@ -26,6 +27,32 @@ python ingest_docs.py             # 调用 embedding 生成 vectors.json
 脚本会处理 frontmatter、`{!...!}` 引用、`///` 指令和代码块；支持断点续传，超过 8192 token 的块会被跳过。
 
 如果换成自己的文档，把 Markdown 放进 `build/docs/`，用 `python step8_embed.py` 重建即可（那套脚本按字符切块）。
+
+## MCP
+
+项目提供 MCP Server（`build/mcp_server.py`），暴露两个工具：
+
+| 工具 | 说明 |
+|---|---|
+| `search_docs` | 在 FastAPI 文档库中检索，返回段落与来源文件 |
+| `calculator` | 四则运算与乘方，表达式用 AST 白名单校验 |
+
+在支持 MCP 的客户端（Claude Desktop、Cursor 等）中配置：
+
+```json
+{
+  "mcpServers": {
+    "fastapi-docs": {
+      "command": "python",
+      "args": ["C:/path/to/ai-journey/build/mcp_server.py"]
+    }
+  }
+}
+```
+
+命令行验证：`python mcp_client_demo.py`（列出工具并各调用一次）。
+
+依赖：`pip install mcp`。MCP 服务端单独运行，不影响主应用镜像。
 
 ## 技术栈
 
@@ -50,6 +77,8 @@ build/
 ├── step9_vector.py      向量检索
 ├── step13_agent.py      Agent 循环与工具定义
 ├── step14_task_eval.py  Agent 任务评测
+├── mcp_server.py        MCP 服务（search_docs / calculator）
+├── mcp_client_demo.py   MCP 客户端测试
 ├── test_safety.py       路径安全单元测试
 ├── docs/                知识库文档
 ├── eval/                评测集

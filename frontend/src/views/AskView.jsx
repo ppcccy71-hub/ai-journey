@@ -88,24 +88,49 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
     <div className="chat">
       <div className="messages">
         {messages.length === 0 && !streaming && (
-          <div className="empty">问点什么，比如「RAG 有哪几个步骤？」</div>
+          <div className="empty">
+            <b>问点什么</b>
+            比如「RAG 有哪几个步骤？」「怎么声明请求体？」
+            <br />
+            回答会标注出处；资料里没有的会直接拒答。
+          </div>
         )}
 
         {messages.map((m, i) => (
-          <div key={i} className={`bubble ${m.role}`}>
-            {m.content}
+          <div key={i} className={`row ${m.role}`}>
+            <div className={`avatar ${m.role === 'user' ? 'me' : 'ai'}`}>
+              {m.role === 'user' ? '我' : 'AI'}
+            </div>
+            <div className={`bubble ${m.role}`}>{m.content}</div>
           </div>
         ))}
 
         {streaming && (
-          <div className={`bubble assistant ${refused ? 'refused' : ''}`}>{streaming}</div>
+          <div className="row assistant">
+            <div className="avatar ai">AI</div>
+            <div className={`bubble assistant ${refused ? 'refused' : ''}`}>{streaming}</div>
+          </div>
         )}
+
+        {loading && !streaming && (
+          <div className="row assistant">
+            <div className="avatar ai">AI</div>
+            <div className="bubble assistant">
+              <span className="typing">
+                <i />
+                <i />
+                <i />
+              </span>
+            </div>
+          </div>
+        )}
+
         <div ref={bottomRef} />
       </div>
 
       <div className="chat-footer">
         {sources.length > 0 && (
-          <div className="sources">
+          <div className="chips">
             {sources.map((s) => (
               <span key={s.index} className="chip">
                 [{s.index}] {s.source} · {s.score}

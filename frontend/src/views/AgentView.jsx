@@ -44,12 +44,11 @@ export default function AgentView() {
         {trace.length > 0 && (
           <div className="trace">
             {trace.map((t, i) => (
-              <div key={i}>
+              <div key={i} className="trace-item">
                 <span className="tool">
                   [{t.step}] {t.tool}
-                </span>{' '}
+                </span>
                 {JSON.stringify(t.args).slice(0, 80)}
-                <br />
                 <span className="result">← {String(t.result).slice(0, 120)}</span>
               </div>
             ))}
