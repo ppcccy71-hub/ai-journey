@@ -27,6 +27,16 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 
 `basics/` 下的六个脚本分别演示：API 调用与计费、SSE 流式、生成器、异步阻塞、最小 FastAPI 服务、文件存储。均为独立可运行脚本。
 
+## 项目材料
+
+| 材料 | 路径 |
+|---|---|
+| 架构图 | `docs/architecture.svg` |
+| 演示脚本（3 分钟） | `docs/demo-script.md` |
+| 简历条目与面试追问 | `docs/resume.md` |
+| 评测数据 | `build/RESULTS.md` |
+| 项目说明 | `build/README.md` |
+
 ## 说明
 
 - `archive/` 为过程材料，不参与运行

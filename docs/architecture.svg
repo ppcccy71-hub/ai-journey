@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="620" viewBox="0 0 980 620">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 10; }
+      .group { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1.5; rx: 14; }
+      .title { font: 600 15px -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .label { font: 400 13px -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #334155; }
+      .muted { font: 400 12px -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; fill: #64748b; }
+      .line { stroke: #64748b; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #94a3b8; stroke-width: 1.5; fill: none; stroke-dasharray: 5 4; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="980" height="620" fill="#f1f5f9"/>
+
+  <text x="40" y="42" class="title" font-size="19">个人工作助手 · 架构</text>
+  <text x="40" y="64" class="muted">RAG 知识问答 + 工具调用 Agent + 会话与用量统计，单端口部署</text>
+
+  <!-- 前端 -->
+  <rect x="40" y="96" width="200" height="150" class="box"/>
+  <text x="60" y="124" class="title">浏览器</text>
+  <text x="60" y="148" class="label">React 18 + Vite</text>
+  <text x="60" y="172" class="muted">知识问答页</text>
+  <text x="60" y="192" class="muted">Agent 控制台</text>
+  <text x="60" y="212" class="muted">统计看板</text>
+  <text x="60" y="236" class="muted">fetch + SSE 流式解析</text>
+
+  <!-- FastAPI 服务 -->
+  <rect x="300" y="96" width="300" height="300" class="group"/>
+  <text x="322" y="124" class="title">FastAPI 服务</text>
+  <text x="322" y="144" class="muted">app.py</text>
+
+  <rect x="318" y="158" width="264" height="38" class="box"/>
+  <text x="332" y="182" class="label">/ask · /ask/stream　问答</text>
+
+  <rect x="318" y="204" width="264" height="38" class="box"/>
+  <text x="332" y="228" class="label">/agent/run　任务执行</text>
+
+  <rect x="318" y="250" width="264" height="38" class="box"/>
+  <text x="332" y="274" class="label">/sessions　会话管理</text>
+
+  <rect x="318" y="296" width="264" height="38" class="box"/>
+  <text x="332" y="320" class="label">/stats · /stats/daily　统计</text>
+
+  <text x="322" y="356" class="muted">中间件：/api 前缀剥离</text>
+  <text x="322" y="376" class="muted">阈值 0.45 拒答 · 请求日志</text>
+
+  <!-- 检索与模型 -->
+  <rect x="660" y="96" width="280" height="130" class="box"/>
+  <text x="680" y="124" class="title">检索层</text>
+  <text x="680" y="148" class="label">向量检索（1326 块）</text>
+  <text x="680" y="170" class="muted">中文问题 → 翻译 → 双查询召回</text>
+  <text x="680" y="190" class="muted">top-5 拼接上下文 + 引用编号</text>
+  <text x="680" y="210" class="muted">召回阈值 0.45，低于则拒答</text>
+
+  <rect x="660" y="246" width="280" height="110" class="box"/>
+  <text x="680" y="274" class="title">生成层</text>
+  <text x="680" y="298" class="label">DeepSeek deepseek-flash</text>
+  <text x="680" y="320" class="muted">SSE 流式返回</text>
+  <text x="680" y="340" class="muted">温度 0.2，成本按 token 计</text>
+
+  <rect x="660" y="376" width="280" height="110" class="box"/>
+  <text x="680" y="404" class="title">Agent 工具</text>
+  <text x="680" y="428" class="label">检索 / 计算 / 读 / 写 / 列目录</text>
+  <text x="680" y="450" class="muted">最多 6 轮，路径沙箱</text>
+  <text x="680" y="470" class="muted">工具异常转为文字回传模型</text>
+
+  <!-- 存储与外部 -->
+  <rect x="300" y="430" width="300" height="110" class="box"/>
+  <text x="320" y="458" class="title">SQLite</text>
+  <text x="320" y="482" class="label">sessions / messages / usage_log</text>
+  <text x="320" y="504" class="muted">挂载 ./data，容器重建不丢</text>
+  <text x="320" y="524" class="muted">统计页数据来源</text>
+
+  <rect x="660" y="510" width="280" height="72" class="box"/>
+  <text x="680" y="538" class="title">阿里云百炼</text>
+  <text x="680" y="560" class="label">text-embedding-v3 · 1024 维</text>
+
+  <!-- 连线 -->
+  <path d="M240 170 L300 170" class="line"/>
+  <text x="248" y="162" class="muted">/api</text>
+
+  <path d="M600 170 L660 160" class="line"/>
+  <text x="604" y="152" class="muted">检索</text>
+
+  <path d="M600 200 L660 300" class="line"/>
+  <text x="596" y="262" class="muted">生成</text>
+
+  <path d="M600 240 L660 430" class="line"/>
+  <text x="596" y="360" class="muted">工具</text>
+
+  <path d="M450 396 L450 430" class="line"/>
+  <text x="458" y="418" class="muted">读写</text>
+
+  <path d="M660 540 L600 500" class="line"/>
+  <text x="606" y="540" class="muted">向量化</text>
+
+  <!-- 数据流说明 -->
+  <text x="40" y="470" class="title" font-size="14">一次问答</text>
+  <text x="40" y="494" class="label">问题 → 翻译 → 向量检索 top-5</text>
+  <text x="40" y="514" class="label">→ 拼接上下文与引用 → 流式生成</text>
+  <text x="40" y="534" class="label">→ 写入会话与成本日志</text>
+  <text x="40" y="560" class="muted">成本约 $0.00015 / 次，延迟 1–3s</text>
+</svg>
