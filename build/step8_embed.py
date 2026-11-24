@@ -37,7 +37,7 @@ def load_env():
 load_env()
 BASE = os.environ.get("BAILIAN_BASE_URL","https://dashscope.aliyuncs.com/compatible-mode/v1").rstrip("/")
 KEY = os.environ.get("BAILIAN_API_KEY","")
-MODEL = os.environ.get("BAILIAN_BASE_MODEL","text-embedding-v3")
+MODEL = os.environ.get("EMBED_MODEL") or os.environ.get("BAILIAN_BASE_MODEL") or "text-embedding-v3"
 
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler())
 
