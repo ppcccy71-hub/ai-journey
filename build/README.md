@@ -52,7 +52,25 @@ python ingest_docs.py             # 调用 embedding 生成 vectors.json
 
 命令行验证：`python mcp_client_demo.py`（列出工具并各调用一次）。
 
-依赖：`pip install mcp`。MCP 服务端单独运行，不影响主应用镜像。
+### Agent 消费外部 MCP 工具
+
+除了作为 Server，Agent 也能反向接入外部 MCP Server。在 `build/mcp_servers.json` 中配置：
+
+```json
+{
+  "servers": [
+    {"name": "time", "command": "python", "args": ["-m", "mcp_server_time"]}
+  ]
+}
+```
+
+启动时自动发现这些 server 的工具，把 `input_schema` 转成模型可用的 function 格式，与本地 5 个工具合并；调用时通过 stdio 转发。
+
+实测：接入官方 `mcp-server-time` 后，问「把北京时间 14:30 转换成纽约时间」，Agent 自动调用 `convert_time(source_timezone, target_timezone, time)` 并给出 01:30 的结论。
+
+> 注意：mcp 2.x 的工具描述字段是 `input_schema`（下划线），1.x 是 `inputSchema`；字段名读错会导致参数 schema 为空、模型只能猜参数名。桥接层对两种写法都做了兼容。
+
+依赖：`pip install mcp mcp-server-time`。MCP 相关代码单独运行，不影响主应用镜像。
 
 ## 技术栈
 

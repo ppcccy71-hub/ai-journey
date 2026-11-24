@@ -1,0 +1,9 @@
+{
+  "servers": [
+    {
+      "name": "time",
+      "command": "python",
+      "args": ["-m", "mcp_server_time"]
+    }
+  ]
+}

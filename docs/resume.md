@@ -8,7 +8,7 @@
 - 设计跨语言检索：中文问题先翻译为英文再检索，recall@5 由 95% 提升至 100%；剔除变更日志等元信息文档使索引体积减少 43%，检索耗时下降 25%。
 - 建立 20 题检索评测集与 20 题答案评测集（15 可答 + 5 应拒答），端到端准确率 84%（5 次均值），拒答准确率 100%；对“保留代码块”“双路索引”两种方案做了对照实验，实测无提升后回退。
 - 实现工具调用 Agent（检索 / 四则运算 / 文件读写 / 列目录），10 项任务成功率 90%；通过路径沙箱、参数校验、异常回传保证调用安全。
-- 将检索与计算能力封装为 MCP Server，可在 Claude Desktop、Cursor 等客户端中直接发现并调用，兼容 MCP 2.x 协议。
+- 将检索与计算能力封装为 MCP Server，可在 Claude Desktop、Cursor 等客户端中直接发现并调用；同时实现反向接入，Agent 可发现并消费外部 MCP Server 的工具（实测接入官方 time server）。
 
 技术栈：Python、FastAPI、Pydantic、SQLite、React、Vite、Docker Compose、DeepSeek API、百炼 Embedding
 

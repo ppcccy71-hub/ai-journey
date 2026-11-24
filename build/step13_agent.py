@@ -9,6 +9,7 @@ import os
 import urllib.request
 from pathlib import Path
 
+import mcp_bridge
 import step9_vector as s9
 
 ROOT = Path(__file__).resolve().parent
@@ -47,7 +48,7 @@ MODEL_V, CHUNKS = s9.load_vectors()
 SYSTEM = ("你是一个会使用工具的助手。需要查资料时调用 search_docs，"
           "需要算数时调用 calculator。不要编造资料里没有的内容。")
 
-TOOLS = [
+LOCAL_TOOLS = [
     {"type": "function", "function": {
         "name": "search_docs",
         "description": "在本地知识库里搜索相关资料，返回最相关的几段文字",
@@ -96,7 +97,25 @@ def safe_calc(expr):
     return ev(ast.parse(expr, mode="eval").body)
 
 
+_EXTERNAL = None
+
+
+def external_tools():
+    """懒加载外部 MCP 工具，避免拖慢应用启动。"""
+    global _EXTERNAL
+    if _EXTERNAL is None:
+        _EXTERNAL = mcp_bridge.external_tools()
+    return _EXTERNAL
+
+
+def all_tools():
+    return LOCAL_TOOLS + [e["schema"] for e in external_tools()]
+
+
 def execute(name, args):
+    for e in external_tools():
+        if e["schema"]["function"]["name"] == name:
+            return mcp_bridge.call(e["server"], e["tool"], args)
     """执行工具。任何异常都转成文字返回给模型，不让程序崩。"""
     try:
         if name == "search_docs":
@@ -123,7 +142,7 @@ def execute(name, args):
 
 def chat(messages):
     body = {"model": MODEL, "messages": messages, "temperature": 0.2,
-            "max_tokens": 500, "thinking": {"type": "disabled"}, "tools": TOOLS}
+            "max_tokens": 500, "thinking": {"type": "disabled"}, "tools": all_tools()}
     req = urllib.request.Request(
         f"{BASE}/chat/completions", data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {KEY}"},
@@ -160,7 +179,6 @@ def run(question, max_steps=6, trace=None):
             if trace is not None:
                 trace.append({"step": step, "tool": name, "args": args,
                               "result": result[:160]})
-            print(f"   → {name}({json.dumps(args, ensure_ascii=False)[:60]})")
             print(f"   → {name}({json.dumps(args, ensure_ascii=False)[:60]})")
             print(f"     ← {result[:70].replace(chr(10), ' ')}")
             messages.append({"role": "tool", "tool_call_id": c["id"], "content": result})
