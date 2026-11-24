@@ -8,7 +8,7 @@
 
 - **文档问答**：向量检索 top-5 片段，模型依据片段回答并标注引用编号；没有相关资料时拒答
 - **流式输出**：SSE 逐字返回，前端边收边显示
-- **Agent**：5 个工具（检索、四则运算、读文件、写文件、列目录），模型自行决定调用顺序，最多 6 步
+- **Agent**：6 个工具（检索、四则运算、numpy 数组/矩阵计算、读文件、写文件、列目录），模型自行决定调用顺序，最多 6 步
 - **会话管理**：新建、切换、删除会话，历史消息持久化
 - **用量统计**：问答次数、token、成本、平均延迟，按天聚合
 - **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
@@ -64,7 +64,7 @@ python ingest_docs.py             # 调用 embedding 生成 vectors.json
 }
 ```
 
-启动时自动发现这些 server 的工具，把 `input_schema` 转成模型可用的 function 格式，与本地 5 个工具合并；调用时通过 stdio 转发。
+启动时自动发现这些 server 的工具，把 `input_schema` 转成模型可用的 function 格式，与本地 6 个工具合并；调用时通过 stdio 转发。
 
 实测：接入官方 `mcp-server-time` 后，问「把北京时间 14:30 转换成纽约时间」，Agent 自动调用 `convert_time(source_timezone, target_timezone, time)` 并给出 01:30 的结论。
 
@@ -94,6 +94,7 @@ build/
 ├── step8_embed.py       生成向量索引
 ├── step9_vector.py      向量检索
 ├── step13_agent.py      Agent 循环与工具定义
+├── numpy_tool.py        numpy 计算工具（AST 白名单，不用 eval）
 ├── step14_task_eval.py  Agent 任务评测
 ├── mcp_server.py        MCP 服务（search_docs / calculator）
 ├── mcp_client_demo.py   MCP 客户端测试
@@ -234,6 +235,8 @@ python step8_embed.py
 - 讲解块/代码块双路索引：80%，且 token 增加
 
 代码块虽然能被检索到，但会挤占讲解文字的位置，模型拿到的上下文反而更差。
+
+Agent 任务评测（11 题，覆盖检索后写文件、计算、numpy、缺文件、越界写入与提示词注入，`python step14_task_eval.py`）：**11/11 通过**，平均约 7 秒/任务；注入测试中模型拒绝越界写入。
 
 ## 已知限制
 

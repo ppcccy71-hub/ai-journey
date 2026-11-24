@@ -10,6 +10,7 @@ import urllib.request
 from pathlib import Path
 
 import mcp_bridge
+import numpy_tool
 import step9_vector as s9
 
 ROOT = Path(__file__).resolve().parent
@@ -60,6 +61,13 @@ LOCAL_TOOLS = [
         "description": "计算数学表达式，支持 + - * / ** 和括号",
         "parameters": {"type": "object",
                        "properties": {"expression": {"type": "string", "description": "例如 (300*2)/5000"}},
+                       "required": ["expression"]}}},
+    {"type": "function", "function": {
+        "name": "numpy_calc",
+        "description": "用 numpy 计算数组、矩阵和统计量。支持 np.mean/std/sum/dot/norm、矩阵乘法 @、.T、.shape、reshape 等",
+        "parameters": {"type": "object",
+                       "properties": {"expression": {"type": "string",
+                                                     "description": "numpy 表达式，例如 np.mean([1,2,3,4]) 或 np.array([[1,2],[3,4]]) @ np.array([[1],[0]])"}},
                        "required": ["expression"]}}},
     {"type": "function", "function": {
         "name": "write_file",
@@ -123,6 +131,8 @@ def execute(name, args):
             return "\n\n".join(f"[{c['source']}] {c['text'][:200]}" for _, c in hits)
         if name == "calculator":
             return str(safe_calc(args["expression"]))
+        if name == "numpy_calc":
+            return numpy_tool.evaluate(args["expression"])
         if name == "write_file":
             p = safe_path(args["path"])
             p.write_text(args["content"], encoding="utf-8")
@@ -142,7 +152,7 @@ def execute(name, args):
 
 def chat(messages):
     body = {"model": MODEL, "messages": messages, "temperature": 0.2,
-            "max_tokens": 500, "thinking": {"type": "disabled"}, "tools": all_tools()}
+            "max_tokens": 1200, "thinking": {"type": "disabled"}, "tools": all_tools()}
     req = urllib.request.Request(
         f"{BASE}/chat/completions", data=json.dumps(body).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {KEY}"},

@@ -77,13 +77,17 @@ def search_plus(question, chunks, model, top_k=5, use_translate=True):
 
 
 def search_mixed(question, chunks, model, top_k=5, n_code=2, use_translate=True):
-    """双路召回：讲解块取 top_k-n_code，代码块取 n_code，合并后按分数排序。"""
+    """双路召回：讲解块取 top_k-n_code，代码块取 n_code，合并后按分数排序。
+
+    如果索引里没有代码块，就把名额全部给讲解块，避免返回数量变少。
+    """
     prose = [c for c in chunks if c.get("kind", "prose") == "prose"]
     code = [c for c in chunks if c.get("kind") == "code"]
+    n_code_eff = min(n_code, len(code))
     queries = build_queries(question, use_translate)
-    hits = _merged(queries, prose, model, max(1, top_k - n_code))
-    if code:
-        hits += _merged(queries, code, model, n_code)
+    hits = _merged(queries, prose, model, max(1, top_k - n_code_eff))
+    if n_code_eff:
+        hits += _merged(queries, code, model, n_code_eff)
     return sorted(hits, key=lambda x: -x[0])[:top_k]
 
 
