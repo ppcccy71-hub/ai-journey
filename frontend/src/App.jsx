@@ -53,7 +53,7 @@ export default function App() {
     if (token === null) return
     setToken(token.trim())
     setHasToken(!!token.trim())
-    if (bootError) window.location.reload()
+    window.location.reload()
   }
 
   async function newSession() {
