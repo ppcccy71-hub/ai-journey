@@ -74,6 +74,29 @@ python ingest_docs.py             # 调用 embedding 生成 vectors.json
 
 依赖：`pip install mcp mcp-server-time`。MCP 相关代码单独运行，不影响主应用镜像。
 
+## 部署
+
+### 本机 Docker
+
+`powershell
+docker compose up -d --build
+`
+
+### 公网部署（Railway）
+
+1. 把仓库推到 GitHub
+2. Railway → New Project → Deploy from GitHub repo
+3. 在 Variables 里填入 .env.example 中的变量（LLM_API_KEY、BAILIAN_API_KEY 必填）
+4. Settings → Networking → Generate Domain
+5. 健康检查路径 /health，
+ailway.json 已配置
+
+说明：
+
+- 向量索引 uild/vectors.json（约 14MB）随镜像打包，部署时不需要重建索引
+- SQLite 默认写在容器内，重启后清空；要持久化就挂载卷并设置 ASSISTANT_DB
+- 云平台会注入 PORT，Dockerfile 的启动命令已支持
+
 ## 技术栈
 
 | 层 | 选型 |
