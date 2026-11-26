@@ -47,6 +47,8 @@ def embed(texts,model,retries=3):
 
     网络抖动（SSL EOF、超时）重试，避免单次失败中断整个索引或查询。
     """
+    if not BASE or not KEY:
+        raise RuntimeError("未配置 BAILIAN_BASE_URL / BAILIAN_API_KEY，无法向量化")
     body = {"model":model,"input":texts,"encoding_format":"float"}
     req = urllib.request.Request(
         f"{BASE}/embeddings",

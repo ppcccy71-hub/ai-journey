@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 import llm
 import step9_vector as s9
+import step8_embed as s8
 import step13_agent as agent
 import store
 import agent_runs
@@ -151,7 +152,9 @@ def remove_session(sid: str):
 # ============================================================
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": llm.MODEL, "chunks": len(CHUNKS)}
+    return {"status": "ok", "model": llm.MODEL, "chunks": len(CHUNKS),
+            "llm_configured": bool(llm.BASE and llm.KEY),
+            "embed_configured": bool(s8.BASE and s8.KEY)}
 
 
 @app.post("/ask")

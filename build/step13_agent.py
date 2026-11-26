@@ -40,8 +40,8 @@ def load_env():
 
 
 load_env()
-BASE = os.environ["LLM_BASE_URL"].rstrip("/")
-KEY = os.environ["LLM_API_KEY"]
+BASE = (os.environ.get("LLM_BASE_URL") or "").rstrip("/")
+KEY = os.environ.get("LLM_API_KEY") or ""
 MODEL = os.environ.get("LLM_MODEL", "deepseek-flash")
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 MODEL_V, CHUNKS = s9.load_vectors()
@@ -153,6 +153,8 @@ def execute(name, args, approve=None):
 
 
 def chat(messages):
+    if not BASE or not KEY:
+        raise RuntimeError("未配置 LLM_BASE_URL / LLM_API_KEY，Agent 无法调用模型")
     body = {"model": MODEL, "messages": messages, "temperature": 0.2,
             "max_tokens": 1200, "thinking": {"type": "disabled"}, "tools": all_tools()}
     req = urllib.request.Request(
