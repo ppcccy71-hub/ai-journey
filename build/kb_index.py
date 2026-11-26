@@ -26,20 +26,35 @@ def path_of(kb_id: str) -> Path:
 
 
 def ensure_default(kb_id: str = "fastapi", name: str = "FastAPI 官方文档"):
-    """把已有的 vectors.json 注册成默认知识库。"""
+    """内置知识库：每次启动从镜像里的 vectors.json 强制恢复，保证只读且不被污染。"""
     import kb_store
 
     target = path_of(kb_id)
-    if not target.exists() and DEFAULT_SOURCE.exists():
+    if DEFAULT_SOURCE.exists():
         target.write_bytes(DEFAULT_SOURCE.read_bytes())
-    if target.exists() and kb_store.get_kb(kb_id) is None:
-        data = load(kb_id)
+    if not target.exists():
+        return
+    data = load(kb_id)
+    if kb_store.get_kb(kb_id) is None:
         with kb_store.connect() as conn:
             conn.execute(
                 "INSERT INTO kbs(id,name,created_at,chunk_count,doc_count) VALUES(?,?,?,?,?)",
                 (kb_id, name, time.time(), len(data["chunks"]),
                  len({c["source"] for c in data["chunks"]})),
             )
+    # 把内置文档记录补进 kb_docs，避免上传后统计被覆盖
+    with kb_store.connect() as conn:
+        existing = {r[0] for r in conn.execute(
+            "SELECT filename FROM kb_docs WHERE kb_id=?", (kb_id,)).fetchall()}
+        counts = {}
+        for c in data["chunks"]:
+            counts[c["source"]] = counts.get(c["source"], 0) + 1
+        for src, cnt in counts.items():
+            if src not in existing:
+                conn.execute(
+                    "INSERT OR IGNORE INTO kb_docs(kb_id,filename,chunks,created_at) VALUES(?,?,?,?)",
+                    (kb_id, src, cnt, time.time()))
+    kb_store.update_kb(kb_id, chunk_count=len(data["chunks"]), doc_count=len(counts))
 
 
 def load(kb_id: str):

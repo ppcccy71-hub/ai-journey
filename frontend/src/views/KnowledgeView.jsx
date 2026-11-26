@@ -114,11 +114,18 @@ export default function KnowledgeView({ kb, onSelect, onChanged }) {
 
         <div className="kb-upload">
           <input ref={fileRef} type="file" accept=".md,.txt,.pdf" onChange={upload} hidden />
-          <button onClick={() => fileRef.current?.click()}>上传文档到「{kb}」</button>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={kb === 'fastapi'}
+            title={kb === 'fastapi' ? '内置知识库只读，请新建知识库' : ''}
+          >
+            {kb === 'fastapi' ? '内置库只读' : `上传文档到「${kb}」`}
+          </button>
           <span className="meta">{busy}</span>
         </div>
         <div className="hint-card">
           支持 .md / .txt / .pdf。上传后后台切块并向量化，几秒后自动刷新；同一文件名会覆盖旧内容。
+          内置的 FastAPI 库是只读的，练习上传请先新建知识库。
         </div>
       </div>
     </div>

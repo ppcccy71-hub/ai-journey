@@ -341,6 +341,8 @@ def upload_document(kb_id: str, request: Request, file: UploadFile = File(...)):
     guard(request)
     if kb_store.get_kb(kb_id) is None:
         raise HTTPException(404, "知识库不存在")
+    if kb_id == "fastapi":
+        raise HTTPException(400, "内置知识库只读，请新建知识库后再上传")
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in (".md", ".txt", ".pdf"):
         raise HTTPException(400, "只支持 .md / .txt / .pdf")
