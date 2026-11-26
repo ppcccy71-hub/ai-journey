@@ -46,8 +46,9 @@ def test_safe_path_blocks_traversal():
 
 
 def test_safe_path_blocks_absolute():
+    # 用 POSIX 绝对路径：Windows 上会解析到当前盘根目录，Linux 上就是 /etc
     with pytest.raises(ValueError):
-        agent.safe_path("C:/Windows/system.ini")
+        agent.safe_path("/etc/passwd")
 
 
 def test_safe_path_allows_normal():
