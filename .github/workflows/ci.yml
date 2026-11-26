@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r build/requirements.txt pytest httpx
+      - name: Run tests
+        env:
+          LLM_BASE_URL: https://api.deepseek.com
+          LLM_API_KEY: test-key
+          BAILIAN_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
+          BAILIAN_API_KEY: test-key
+        run: python -m pytest build/tests -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build

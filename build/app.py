@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -26,6 +26,26 @@ SYSTEM = ("你是知识库助手。只能依据给定资料回答，每句话后
           "资料里没有答案时，直接回答：资料中没有相关信息。不要编造。")
 
 app = FastAPI(title="个人工作助手", version="0.2.0")
+
+METRICS = {"total": 0, "errors": 0, "latency": 0.0, "paths": defaultdict(int)}
+START_TS = time.time()
+
+
+@app.middleware("http")
+async def trace_and_metrics(request: Request, call_next):
+    """给每个请求分配 trace_id，并记录基础指标。"""
+    rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:8]
+    started = time.perf_counter()
+    response = await call_next(request)
+    elapsed = time.perf_counter() - started
+    METRICS["total"] += 1
+    METRICS["latency"] += elapsed
+    METRICS["paths"][request.url.path] += 1
+    if response.status_code >= 500:
+        METRICS["errors"] += 1
+    response.headers["X-Request-Id"] = rid
+    return response
+
 
 
 @app.middleware("http")
@@ -365,6 +385,42 @@ def upload_document(kb_id: str, request: Request, file: UploadFile = File(...)):
     tmp.write_bytes(file.file.read())
     threading.Thread(target=kb_index.ingest_file, args=(kb_id, tmp, file.filename), daemon=True).start()
     return {"status": "indexing", "filename": file.filename}
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus 文本格式，方便接监控。"""
+    stats = store.stats()
+    total = max(1, METRICS["total"])
+    lines = [
+        "# HELP app_requests_total 总请求数",
+        "# TYPE app_requests_total counter",
+        f"app_requests_total {METRICS['total']}",
+        "# HELP app_errors_total 5xx 数量",
+        "# TYPE app_errors_total counter",
+        f"app_errors_total {METRICS['errors']}",
+        "# HELP app_avg_latency_seconds 平均请求耗时",
+        "# TYPE app_avg_latency_seconds gauge",
+        f"app_avg_latency_seconds {METRICS['latency'] / total:.4f}",
+        "# HELP app_uptime_seconds 运行时长",
+        "# TYPE app_uptime_seconds gauge",
+        f"app_uptime_seconds {time.time() - START_TS:.0f}",
+        "# HELP app_queries_total 问答次数",
+        "# TYPE app_queries_total counter",
+        f"app_queries_total {stats['queries']}",
+        "# HELP app_tokens_total token 总量",
+        "# TYPE app_tokens_total counter",
+        f"app_tokens_total {stats['tokens_in'] + stats['tokens_out']}",
+        "# HELP app_cost_usd 累计成本",
+        "# TYPE app_cost_usd gauge",
+        f"app_cost_usd {stats['total_cost']:.6f}",
+        "# HELP app_kbs 知识库数量",
+        "# TYPE app_kbs gauge",
+        f"app_kbs {len(kb_store.list_kbs())}",
+    ]
+    for path, count in sorted(METRICS["paths"].items()):
+        lines.append(f'app_requests_by_path{{path="{path}"}} {count}')
+    return PlainTextResponse("\n".join(lines) + "\n")
 
 
 @app.get("/stats")

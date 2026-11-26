@@ -113,6 +113,13 @@ AGENT_WORKSPACE=/data/agent_workspace
 - 云平台会注入 `PORT`，Dockerfile 的启动命令已支持
 - **公开部署建议设置 `ACCESS_TOKEN` 与 `RATE_LIMIT_PER_MIN`**：设置后接口要求请求头 `X-Access-Token`，并按 IP 每分钟限流；前端右上角「设置口令」输入一次即可
 
+## 可观测与测试
+
+- 每个请求分配 trace_id，响应头 `X-Request-Id` 回传，日志可串联
+- `/metrics` 暴露 Prometheus 文本：请求数、5xx、平均延迟、问答次数、token、成本、知识库数
+- 单元测试：`python -m pytest build/tests -q`（沙箱、切块、限流、口令、API 冒烟，不调用外部模型）
+- GitHub Actions：push 自动跑后端测试 + 前端构建
+
 ## 技术栈
 
 | 层 | 选型 |
@@ -242,6 +249,7 @@ python step8_embed.py
 | DELETE | `/kbs/{id}` | 删除知识库 |
 | POST | `/kbs/{id}/documents` | 上传文档（md / txt / pdf） |
 | GET | `/stats` | 汇总统计 |
+| GET | `/metrics` | Prometheus 指标 |
 | GET | `/stats/daily?days=7` | 按天统计 |
 | GET | `/health` | 健康检查 |
 
