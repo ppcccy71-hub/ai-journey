@@ -73,7 +73,7 @@ class AskRequest(BaseModel):
     top_k: int = Field(5, ge=1, le=8)
     min_score: float = Field(0.45, ge=0, le=1)
     mode: str = Field("quality", pattern="^(speed|quality)$", description="speed=向量 top5，quality=top20+rerank")
-    kb: str = Field("fastapi", max_length=40, description="知识库 ID")
+    kb: str = Field("all", max_length=40, description="知识库 ID，all=全部库")
 
 
 class SessionCreate(BaseModel):

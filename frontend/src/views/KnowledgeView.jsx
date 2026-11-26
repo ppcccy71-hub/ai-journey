@@ -116,10 +116,10 @@ export default function KnowledgeView({ kb, onSelect, onChanged }) {
           <input ref={fileRef} type="file" accept=".md,.txt,.pdf" onChange={upload} hidden />
           <button
             onClick={() => fileRef.current?.click()}
-            disabled={kb === 'fastapi'}
-            title={kb === 'fastapi' ? '内置知识库只读，请新建知识库' : ''}
+            disabled={kb === 'fastapi' || kb === 'all'}
+            title={kb === 'fastapi' || kb === 'all' ? '请先在列表里选中一个具体知识库' : ''}
           >
-            {kb === 'fastapi' ? '内置库只读' : `上传文档到「${kb}」`}
+            {kb === 'all' ? '先选择一个知识库' : kb === 'fastapi' ? '内置库只读' : `上传文档到「${kb}」`}
           </button>
           <span className="meta">{busy}</span>
         </div>

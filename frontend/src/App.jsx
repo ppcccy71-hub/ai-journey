@@ -12,7 +12,7 @@ export default function App() {
   const [booting, setBooting] = useState(true)
   const [hasToken, setHasToken] = useState(!!getToken())
   const [kbs, setKbs] = useState([])
-  const [kb, setKb] = useState('fastapi')
+  const [kb, setKb] = useState('all')
 
   const refresh = useCallback(async () => {
     const list = await listSessions()
@@ -23,10 +23,7 @@ export default function App() {
   // 启动：加载知识库列表
   useEffect(() => {
     listKbs()
-      .then((items) => {
-        setKbs(items)
-        if (items.length && !items.some((k) => k.id === 'fastapi')) setKb(items[0].id)
-      })
+      .then((items) => setKbs(items))
       .catch(() => {})
   }, [])
 

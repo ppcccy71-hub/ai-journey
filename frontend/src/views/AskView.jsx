@@ -141,6 +141,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
         )}
         <div className="meta-row">
           <select className="kb-select" value={kb} onChange={(e) => onKbChange(e.target.value)}>
+            <option value="all">全部知识库</option>
             {(kbs || []).map((k) => (
               <option key={k.id} value={k.id}>
                 {k.name}

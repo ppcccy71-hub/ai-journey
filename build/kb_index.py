@@ -162,12 +162,37 @@ def delete_doc(kb_id: str, filename: str):
     kb_store.update_kb(kb_id, doc_count=docs[0], chunk_count=docs[1])
 
 
+def total_chunks():
+    """把全部知识库的块合并，用于默认的“全部库”检索。
+
+    前提：所有库用同一个 embedding 模型（当前都是 text-embedding-v3）。
+    """
+    import kb_store
+
+    merged = []
+    for kb in kb_store.list_kbs():
+        data = load(kb["id"])
+        if not data:
+            continue
+        for c in data["chunks"]:
+            item = dict(c)
+            item["source"] = f'{kb["name"]} / {c["source"]}'
+            item["kb"] = kb["id"]
+            merged.append(item)
+    return merged
+
+
 def search(kb_id: str, question: str, top_k=5, mode="quality", use_translate=True):
-    data = load(kb_id)
-    if not data or not data["chunks"]:
+    if kb_id == "all":
+        chunks, model = total_chunks(), EMBED_MODEL
+    else:
+        data = load(kb_id)
+        if not data or not data["chunks"]:
+            return [], 0.0
+        chunks, model = data["chunks"], (data.get("model") or EMBED_MODEL)
+    if not chunks:
         return [], 0.0
-    chunks = data["chunks"]
-    model = data.get("model") or EMBED_MODEL
+
     depth = 20 if mode == "quality" else top_k
     cand = s9.search_plus(question, chunks, model, depth, use_translate)
     best = cand[0][0] if cand else 0.0
