@@ -13,6 +13,7 @@
 - **会话管理**：新建、切换、删除会话，历史消息持久化
 - **用量统计**：问答次数、token、成本、平均延迟，按天聚合
 - **检索模式**：质量（top-20 + LLM rerank）与速度（向量 top-5）可切换；多轮追问自动改写查询
+- **多知识库**：支持新建知识库、上传 Markdown / TXT / PDF，按库隔离检索；上传后后台切块并向量化
 - **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
 
 ## 知识库
@@ -78,25 +79,25 @@ python ingest_docs.py             # 调用 embedding 生成 vectors.json
 
 ### 本机 Docker
 
-`powershell
+```powershell
 docker compose up -d --build
-`
+```
 
 ### 公网部署（Railway）
 
 1. 把仓库推到 GitHub
 2. Railway → New Project → Deploy from GitHub repo
-3. 在 Variables 里填入 .env.example 中的变量（LLM_API_KEY、BAILIAN_API_KEY 必填）
+3. 在 Variables 里填入 `.env.example` 中的变量（`LLM_API_KEY`、`BAILIAN_API_KEY` 必填）
 4. Settings → Networking → Generate Domain
-5. 健康检查路径 /health，
-ailway.json 已配置
+5. 健康检查路径 `/health`，`railway.json` 已配置
 
 说明：
 
-- 向量索引 uild/vectors.json（约 14MB）随镜像打包，部署时不需要重建索引
-- SQLite 默认写在容器内，重启后清空；要持久化就挂载卷并设置 ASSISTANT_DB
-- 云平台会注入 PORT，Dockerfile 的启动命令已支持
-- **公开部署建议设置 ACCESS_TOKEN 与 RATE_LIMIT_PER_MIN**：设置后接口要求请求头 X-Access-Token，并按 IP 每分钟限流；前端右上角「设置口令」输入一次即可
+- 向量索引 `build/vectors.json`（约 14MB）随镜像打包，部署时不需要重建索引
+- SQLite 默认写在容器内，重启后清空；要持久化就挂载卷并设置 `ASSISTANT_DB`
+- 上传的文档和向量默认存在容器内 `data/kbs`，**容器重启会清空**；要持久化就挂载卷并设置 `KB_DIR`
+- 云平台会注入 `PORT`，Dockerfile 的启动命令已支持
+- **公开部署建议设置 `ACCESS_TOKEN` 与 `RATE_LIMIT_PER_MIN`**：设置后接口要求请求头 `X-Access-Token`，并按 IP 每分钟限流；前端右上角「设置口令」输入一次即可
 
 ## 技术栈
 
@@ -220,6 +221,11 @@ python step8_embed.py
 | GET | `/sessions` | 会话列表 |
 | GET | `/sessions/{id}` | 会话消息 |
 | DELETE | `/sessions/{id}` | 删除会话 |
+| GET | `/kbs` | 知识库列表 |
+| POST | `/kbs` | 新建知识库 |
+| GET | `/kbs/{id}` | 知识库详情（含文档列表） |
+| DELETE | `/kbs/{id}` | 删除知识库 |
+| POST | `/kbs/{id}/documents` | 上传文档（md / txt / pdf） |
 | GET | `/stats` | 汇总统计 |
 | GET | `/stats/daily?days=7` | 按天统计 |
 | GET | `/health` | 健康检查 |
