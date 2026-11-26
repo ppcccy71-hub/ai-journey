@@ -46,7 +46,9 @@ def guard(request: Request):
     """口令 + 每 IP 每分钟限流。公开部署时防止 key 被刷。"""
     if ACCESS_TOKEN and request.headers.get("x-access-token") != ACCESS_TOKEN:
         raise HTTPException(401, "需要访问口令（X-Access-Token）")
-    ip = request.client.host if request.client else "unknown"
+    # 云平台走反向代理，优先取 X-Forwarded-For 的第一个地址，否则所有人共用一个桶
+    forwarded = request.headers.get("x-forwarded-for") or ""
+    ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
     now = time.time()
     q = _HITS[ip]
     while q and now - q[0] > 60:
