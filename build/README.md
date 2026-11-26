@@ -9,6 +9,7 @@
 - **文档问答**：向量检索 top-5 片段，模型依据片段回答并标注引用编号；没有相关资料时拒答
 - **流式输出**：SSE 逐字返回，前端边收边显示
 - **Agent**：6 个工具（检索、四则运算、numpy 数组/矩阵计算、读文件、写文件、列目录），模型自行决定调用顺序，最多 6 步
+- **Agent 流式与审批**：SSE 实时推送每轮工具调用；写文件前必须人工确认；同一会话带多轮记忆
 - **会话管理**：新建、切换、删除会话，历史消息持久化
 - **用量统计**：问答次数、token、成本、平均延迟，按天聚合
 - **检索模式**：质量（top-20 + LLM rerank）与速度（向量 top-5）可切换；多轮追问自动改写查询
@@ -188,7 +189,9 @@ python step8_embed.py
 |---|---|---|
 | POST | `/ask` | 问答，可带 `session_id` |
 | POST | `/ask/stream` | 流式问答（SSE） |
-| POST | `/agent/run` | 执行 Agent 任务 |
+| POST | `/agent/run` | 执行 Agent 任务（一次性返回） |
+| POST | `/agent/stream` | 执行 Agent 任务（SSE 推工具轨迹，写文件前等待审批） |
+| POST | `/agent/approve` | 批准或拒绝挂起的写操作 |
 | POST | `/sessions` | 新建会话 |
 | GET | `/sessions` | 会话列表 |
 | GET | `/sessions/{id}` | 会话消息 |

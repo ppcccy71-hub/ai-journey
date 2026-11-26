@@ -444,3 +444,13 @@ nav button.active {
 .mode-switch { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: #f3f4f8; }
 .mode-switch button { border: 0; background: transparent; font-size: 11.5px; padding: 3px 10px; border-radius: 999px; cursor: pointer; color: #6b7280; }
 .mode-switch button.on { background: #fff; color: var(--brand); box-shadow: 0 1px 3px rgba(16,24,40,.12); }
+
+.approval { margin-top: 14px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 12px; padding: 14px; }
+.approval-title { font-weight: 600; font-size: 13px; color: #92400e; margin-bottom: 6px; }
+.approval-body { font-size: 12.5px; color: #78350f; word-break: break-all; margin-bottom: 10px; }
+.approval-actions { display: flex; gap: 8px; }
+.approval-actions button { padding: 7px 14px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; font-size: 13px; }
+.approval-actions .ok { background: #0f9d58; color: #fff; }
+.approval-actions .no { background: #fff; color: #b91c1c; border-color: #fecaca; }
+.trace-item.muted { color: #9aa1ad; }
+.trace-item.result { color: #6b7280; }

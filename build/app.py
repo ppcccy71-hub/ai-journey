@@ -11,6 +11,7 @@ import llm
 import step9_vector as s9
 import step13_agent as agent
 import store
+import agent_runs
 import query_rewrite
 import rerank
 import os
@@ -48,6 +49,16 @@ class AskRequest(BaseModel):
 
 class SessionCreate(BaseModel):
     title: str = Field("新会话", max_length=50)
+
+
+class AgentStreamRequest(BaseModel):
+    task: str = Field(..., min_length=1, max_length=500)
+    session_id: str | None = Field(None, max_length=64, description="会话 ID，用于多轮记忆")
+
+
+class AgentApproveRequest(BaseModel):
+    run_id: str = Field(..., min_length=1, max_length=32)
+    approved: bool
 
 
 class AgentRequest(BaseModel):
@@ -228,6 +239,33 @@ def agent_run(req: AgentRequest):
 # ============================================================
 # 统计
 # ============================================================
+@app.post("/agent/stream")
+def agent_stream(req: AgentStreamRequest):
+    """SSE：实时推送工具调用轨迹，写文件前等待人工确认。"""
+    run = agent_runs.start(req.task, req.session_id)
+
+    def gen():
+        while True:
+            evt = run.next_event(timeout=1.0)
+            if evt is None:
+                if run.done:
+                    break
+                yield ": ping\n\n"
+                continue
+            yield sse(evt)
+            if evt["type"] in ("done", "error"):
+                break
+
+    return StreamingResponse(gen(), media_type="text/event-stream")
+
+
+@app.post("/agent/approve")
+def agent_approve(req: AgentApproveRequest):
+    if not agent_runs.approve(req.run_id, req.approved):
+        raise HTTPException(404, "任务不存在或已结束")
+    return {"ok": True}
+
+
 @app.get("/stats")
 def stats():
     return store.stats()

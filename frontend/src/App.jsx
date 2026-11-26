@@ -117,7 +117,7 @@ export default function App() {
           </main>
         </div>
       ) : tab === 'agent' ? (
-        <AgentView />
+        <AgentView sessionId={currentId} />
       ) : (
         <StatsView />
       )}

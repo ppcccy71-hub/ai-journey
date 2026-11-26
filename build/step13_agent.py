@@ -120,7 +120,7 @@ def all_tools():
     return LOCAL_TOOLS + [e["schema"] for e in external_tools()]
 
 
-def execute(name, args):
+def execute(name, args, approve=None):
     for e in external_tools():
         if e["schema"]["function"]["name"] == name:
             return mcp_bridge.call(e["server"], e["tool"], args)
@@ -134,6 +134,8 @@ def execute(name, args):
         if name == "numpy_calc":
             return numpy_tool.evaluate(args["expression"])
         if name == "write_file":
+            if approve is not None and not approve(name, args):
+                return "用户拒绝执行写入，文件未创建"
             p = safe_path(args["path"])
             p.write_text(args["content"], encoding="utf-8")
             return f"已写入 {p.name}（{len(args['content'])} 字）"
@@ -161,10 +163,23 @@ def chat(messages):
         return json.loads(r.read().decode())
 
 
-def run(question, max_steps=6, trace=None):
+def run(question, max_steps=6, trace=None, on_event=None, approve=None, history=None):
+    """执行任务。
+
+    on_event: 收到事件的回调（step / tool_call / tool_result / answer）
+    approve:  写操作前的人类确认回调，返回 True 才执行
+    history:  最近几轮对话，用于追问
+    """
     CALL_LOG.clear()
-    messages = [{"role": "system", "content": SYSTEM},
-                {"role": "user", "content": question}]
+    messages = [{"role": "system", "content": SYSTEM}]
+    if history:
+        messages.extend({"role": h["role"], "content": h["content"]} for h in history[-4:])
+    messages.append({"role": "user", "content": question})
+
+    def emit(event):
+        if on_event:
+            on_event(event)
+
     for step in range(1, max_steps + 1):
         resp = chat(messages)
         msg = resp["choices"][0]["message"]
@@ -172,9 +187,12 @@ def run(question, max_steps=6, trace=None):
         messages.append(msg)
         calls = msg.get("tool_calls") or []
         print(f"[第 {step} 轮] finish_reason={reason} 工具调用={len(calls)}")
+        emit({"type": "step", "step": step, "finish_reason": reason, "tool_calls": len(calls)})
 
         if not calls:
-            return msg.get("content") or "（模型没有返回内容）"
+            answer = msg.get("content") or "（模型没有返回内容）"
+            emit({"type": "answer", "text": answer})
+            return answer
 
         for c in calls:
             name = c["function"]["name"]
@@ -184,16 +202,22 @@ def run(question, max_steps=6, trace=None):
             except json.JSONDecodeError:
                 args = {}
                 result = "错误：参数不是合法 JSON"
+                emit({"type": "tool_call", "step": step, "tool": name, "args": {}})
             else:
-                result = execute(name, args)
+                emit({"type": "tool_call", "step": step, "tool": name, "args": args})
+                result = execute(name, args, approve)
+
             if trace is not None:
                 trace.append({"step": step, "tool": name, "args": args,
                               "result": result[:160]})
+            emit({"type": "tool_result", "step": step, "tool": name, "result": result[:300]})
             print(f"   → {name}({json.dumps(args, ensure_ascii=False)[:60]})")
             print(f"     ← {result[:70].replace(chr(10), ' ')}")
             messages.append({"role": "tool", "tool_call_id": c["id"], "content": result})
 
-    return "（超过最大轮数，任务未完成）"
+    answer = "（超过最大轮数，任务未完成）"
+    emit({"type": "answer", "text": answer})
+    return answer
 
 
 if __name__ == "__main__":
