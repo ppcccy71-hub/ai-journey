@@ -1,8 +1,9 @@
 import json
+from collections import defaultdict, deque
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -34,7 +35,25 @@ async def strip_api_prefix(request, call_next):
 MODEL_V, CHUNKS = s9.load_vectors()
 
 ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重排
-ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写          # 启动时加载一次
+ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写
+
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")               # 为空则不校验
+RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "20"))
+_HITS = defaultdict(deque)
+
+
+def guard(request: Request):
+    """口令 + 每 IP 每分钟限流。公开部署时防止 key 被刷。"""
+    if ACCESS_TOKEN and request.headers.get("x-access-token") != ACCESS_TOKEN:
+        raise HTTPException(401, "需要访问口令（X-Access-Token）")
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    q = _HITS[ip]
+    while q and now - q[0] > 60:
+        q.popleft()
+    if len(q) >= RATE_LIMIT_PER_MIN:
+        raise HTTPException(429, "请求过于频繁，请稍后再试")
+    q.append(now)          # 启动时加载一次
 
 
 # ============================================================
@@ -154,11 +173,13 @@ def remove_session(sid: str):
 def health():
     return {"status": "ok", "model": llm.MODEL, "chunks": len(CHUNKS),
             "llm_configured": bool(llm.BASE and llm.KEY),
-            "embed_configured": bool(s8.BASE and s8.KEY)}
+            "embed_configured": bool(s8.BASE and s8.KEY),
+            "access_protected": bool(ACCESS_TOKEN)}
 
 
 @app.post("/ask")
-def ask(req: AskRequest):
+def ask(req: AskRequest, request: Request):
+    guard(request)
     t0 = time.perf_counter()
     hits, best = search(req)
 
@@ -183,7 +204,8 @@ def ask(req: AskRequest):
 
 
 @app.post("/ask/stream")
-def ask_stream(req: AskRequest):
+def ask_stream(req: AskRequest, request: Request):
+    guard(request)
     hits, best = search(req)
 
     def gen():
@@ -226,7 +248,8 @@ def ask_stream(req: AskRequest):
 # Agent
 # ============================================================
 @app.post("/agent/run")
-def agent_run(req: AgentRequest):
+def agent_run(req: AgentRequest, request: Request):
+    guard(request)
     t0 = time.perf_counter()
     trace = []
     try:
@@ -243,7 +266,8 @@ def agent_run(req: AgentRequest):
 # 统计
 # ============================================================
 @app.post("/agent/stream")
-def agent_stream(req: AgentStreamRequest):
+def agent_stream(req: AgentStreamRequest, request: Request):
+    guard(request)
     """SSE：实时推送工具调用轨迹，写文件前等待人工确认。"""
     run = agent_runs.start(req.task, req.session_id)
 
@@ -263,7 +287,8 @@ def agent_stream(req: AgentStreamRequest):
 
 
 @app.post("/agent/approve")
-def agent_approve(req: AgentApproveRequest):
+def agent_approve(req: AgentApproveRequest, request: Request):
+    guard(request)
     if not agent_runs.approve(req.run_id, req.approved):
         raise HTTPException(404, "任务不存在或已结束")
     return {"ok": True}

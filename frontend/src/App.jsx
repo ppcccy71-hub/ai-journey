@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { listSessions, createSession, deleteSession } from './api'
+import { listSessions, createSession, deleteSession, getToken, setToken } from './api'
 import AskView from './views/AskView'
 import AgentView from './views/AgentView'
 import StatsView from './views/StatsView'
@@ -9,6 +9,7 @@ export default function App() {
   const [sessions, setSessions] = useState([])
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)
+  const [hasToken, setHasToken] = useState(!!getToken())
 
   const refresh = useCallback(async () => {
     const list = await listSessions()
@@ -30,6 +31,13 @@ export default function App() {
       setBooting(false)
     })()
   }, [refresh])
+
+  function askToken() {
+    const token = window.prompt('输入访问口令（没有就留空）', getToken())
+    if (token === null) return
+    setToken(token.trim())
+    setHasToken(!!token.trim())
+  }
 
   async function newSession() {
     const created = await createSession('新会话')
@@ -60,6 +68,9 @@ export default function App() {
           <span className="dot" />
           <h1>个人工作助手</h1>
           <span className="tag">RAG + Agent</span>
+          <button className="token-btn" onClick={askToken}>
+            {hasToken ? '口令已设置' : '设置口令'}
+          </button>
         </div>
         <nav>
           <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>

@@ -1,13 +1,32 @@
 // 所有后端请求集中在这里，组件里只调函数、不写 fetch 细节
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
+export function getToken() {
+  return localStorage.getItem('access_token') || ''
+}
+
+export function setToken(token) {
+  localStorage.setItem('access_token', token || '')
+}
+
+function authHeaders() {
+  const headers = { ...JSON_HEADERS }
+  const token = getToken()
+  if (token) headers['X-Access-Token'] = token
+  return headers
+}
+
 async function toJson(res) {
+  if (res.status === 401) throw new Error('需要访问口令，请点右上角“设置口令”')
+  if (res.status === 429) throw new Error('请求太频繁，请稍后再试')
   if (!res.ok) throw new Error('HTTP ' + res.status)
   return res.json()
 }
 
 // 通用 SSE 读取：按行解析 data: 帧
 async function readSSE(res, onEvent) {
+  if (res.status === 401) throw new Error('需要访问口令，请点右上角“设置口令”')
+  if (res.status === 429) throw new Error('请求太频繁，请稍后再试')
   if (!res.ok) throw new Error('HTTP ' + res.status)
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
@@ -42,7 +61,7 @@ export async function createSession(title = '新会话') {
   return toJson(
     await fetch('/api/sessions', {
       method: 'POST',
-      headers: JSON_HEADERS,
+      headers: authHeaders(),
       body: JSON.stringify({ title }),
     }),
   )
@@ -60,7 +79,7 @@ export async function deleteSession(sessionId) {
 export async function askStream(question, sessionId, onEvent, mode = 'quality') {
   const res = await fetch('/api/ask/stream', {
     method: 'POST',
-    headers: JSON_HEADERS,
+    headers: authHeaders(),
     body: JSON.stringify({ question, session_id: sessionId, mode }),
   })
   await readSSE(res, onEvent)
@@ -71,7 +90,7 @@ export async function runAgent(task) {
   return toJson(
     await fetch('/api/agent/run', {
       method: 'POST',
-      headers: JSON_HEADERS,
+      headers: authHeaders(),
       body: JSON.stringify({ task }),
     }),
   )
@@ -80,7 +99,7 @@ export async function runAgent(task) {
 export async function agentStream(task, sessionId, onEvent) {
   const res = await fetch('/api/agent/stream', {
     method: 'POST',
-    headers: JSON_HEADERS,
+    headers: authHeaders(),
     body: JSON.stringify({ task, session_id: sessionId }),
   })
   await readSSE(res, onEvent)
@@ -90,7 +109,7 @@ export async function approveAgent(runId, approved) {
   return toJson(
     await fetch('/api/agent/approve', {
       method: 'POST',
-      headers: JSON_HEADERS,
+      headers: authHeaders(),
       body: JSON.stringify({ run_id: runId, approved }),
     }),
   )

@@ -96,6 +96,7 @@ ailway.json 已配置
 - 向量索引 uild/vectors.json（约 14MB）随镜像打包，部署时不需要重建索引
 - SQLite 默认写在容器内，重启后清空；要持久化就挂载卷并设置 ASSISTANT_DB
 - 云平台会注入 PORT，Dockerfile 的启动命令已支持
+- **公开部署建议设置 ACCESS_TOKEN 与 RATE_LIMIT_PER_MIN**：设置后接口要求请求头 X-Access-Token，并按 IP 每分钟限流；前端右上角「设置口令」输入一次即可
 
 ## 技术栈
 
