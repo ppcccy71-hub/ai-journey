@@ -1,6 +1,6 @@
 // 知识库管理页：列表、新建、上传、删除
 import { useEffect, useRef, useState } from 'react'
-import { listKbs, createKb, deleteKb, uploadDocument } from '../api'
+import { listKbs, createKb, deleteKb, uploadDocument, renameKb } from '../api'
 
 export default function KnowledgeView({ kb, onSelect, onChanged }) {
   const [items, setItems] = useState([])
@@ -64,6 +64,13 @@ export default function KnowledgeView({ kb, onSelect, onChanged }) {
     }
   }
 
+  async function rename(id, current) {
+    const name = window.prompt('新的知识库名称', current)
+    if (!name || !name.trim()) return
+    await renameKb(id, name.trim())
+    await refresh()
+  }
+
   async function remove(id) {
     if (!window.confirm('删除这个知识库？')) return
     await deleteKb(id)
@@ -88,15 +95,28 @@ export default function KnowledgeView({ kb, onSelect, onChanged }) {
                 {k.message && <div className="kb-msg">{k.message}</div>}
               </div>
               {k.id !== 'fastapi' && (
-                <button
-                  className="del"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    remove(k.id)
-                  }}
-                >
-                  ×
-                </button>
+                <div className="kb-actions">
+                  <button
+                    className="del"
+                    title="重命名"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      rename(k.id, k.name)
+                    }}
+                  >
+                    ✎
+                  </button>
+                  <button
+                    className="del"
+                    title="删除"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      remove(k.id)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
               )}
             </div>
           ))}

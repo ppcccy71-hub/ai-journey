@@ -326,6 +326,21 @@ def kb_detail(kb_id: str, request: Request):
     return kb
 
 
+class KBRename(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40)
+
+
+@app.patch("/kbs/{kb_id}")
+def rename_kb(kb_id: str, req: KBRename, request: Request):
+    guard(request)
+    if kb_store.get_kb(kb_id) is None:
+        raise HTTPException(404, "知识库不存在")
+    if kb_id == "fastapi":
+        raise HTTPException(400, "内置知识库不能改名")
+    kb_store.update_kb(kb_id, name=req.name.strip())
+    return kb_store.get_kb(kb_id)
+
+
 @app.delete("/kbs/{kb_id}")
 def remove_kb(kb_id: str, request: Request):
     guard(request)

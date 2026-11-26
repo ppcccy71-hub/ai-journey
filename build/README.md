@@ -96,6 +96,20 @@ docker compose up -d --build
 - 向量索引 `build/vectors.json`（约 14MB）随镜像打包，部署时不需要重建索引
 - SQLite 默认写在容器内，重启后清空；要持久化就挂载卷并设置 `ASSISTANT_DB`
 - 上传的文档和向量默认存在容器内 `data/kbs`，**容器重启会清空**；要持久化就挂载卷并设置 `KB_DIR`
+
+**Railway 挂卷步骤**（卷没有独立标签页）：
+
+1. 项目页按 `Ctrl+K`（Mac `⌘K`）→ 输入 `volume` → Create Volume；或右键点项目画布
+2. 选择要挂的服务，Mount path 填 `/data`
+3. 在 Variables 里加：
+
+```
+ASSISTANT_DB=/data/assistant.db
+KB_DIR=/data/kbs
+AGENT_WORKSPACE=/data/agent_workspace
+```
+
+4. 重新部署后，上传的文档在后续部署中保留
 - 云平台会注入 `PORT`，Dockerfile 的启动命令已支持
 - **公开部署建议设置 `ACCESS_TOKEN` 与 `RATE_LIMIT_PER_MIN`**：设置后接口要求请求头 `X-Access-Token`，并按 IP 每分钟限流；前端右上角「设置口令」输入一次即可
 
@@ -224,6 +238,7 @@ python step8_embed.py
 | GET | `/kbs` | 知识库列表 |
 | POST | `/kbs` | 新建知识库 |
 | GET | `/kbs/{id}` | 知识库详情（含文档列表） |
+| PATCH | `/kbs/{id}` | 重命名知识库 |
 | DELETE | `/kbs/{id}` | 删除知识库 |
 | POST | `/kbs/{id}/documents` | 上传文档（md / txt / pdf） |
 | GET | `/stats` | 汇总统计 |

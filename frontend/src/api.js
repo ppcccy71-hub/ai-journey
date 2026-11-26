@@ -164,3 +164,13 @@ export async function uploadDocument(kbId, file) {
   if (!res.ok) throw new Error('HTTP ' + res.status)
   return res.json()
 }
+
+export async function renameKb(kbId, name) {
+  return toJson(
+    await fetch(`/api/kbs/${kbId}`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ name }),
+    }),
+  )
+}

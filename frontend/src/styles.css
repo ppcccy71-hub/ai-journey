@@ -475,3 +475,6 @@ nav button.active {
   background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; cursor: pointer; }
 .kb-upload { display: flex; align-items: center; gap: 10px; }
 .kb-upload .meta { margin: 0; }
+
+.kb-actions { display: flex; gap: 4px; }
+.kb-actions .del { border: 0; background: transparent; color: #b6bcc7; font-size: 15px; cursor: pointer; }
