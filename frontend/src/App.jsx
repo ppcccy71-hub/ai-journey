@@ -11,6 +11,7 @@ export default function App() {
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)
   const [hasToken, setHasToken] = useState(!!getToken())
+  const [bootError, setBootError] = useState('')
   const [kbs, setKbs] = useState([])
   const [kb, setKb] = useState('all')
 
@@ -30,15 +31,20 @@ export default function App() {
   // 启动：加载会话列表；一个都没有就自动建一个
   useEffect(() => {
     ;(async () => {
-      let list = await refresh()
-      if (list.length === 0) {
-        const created = await createSession('第一次对话')
-        list = await refresh()
-        setCurrentId(created.id)
-      } else {
-        setCurrentId(list[0].id)
+      try {
+        let list = await refresh()
+        if (list.length === 0) {
+          const created = await createSession('第一次对话')
+          list = await refresh()
+          setCurrentId(created.id)
+        } else {
+          setCurrentId(list[0].id)
+        }
+      } catch (err) {
+        setBootError(err.message)
+      } finally {
+        setBooting(false)
       }
-      setBooting(false)
     })()
   }, [refresh])
 
@@ -47,6 +53,7 @@ export default function App() {
     if (token === null) return
     setToken(token.trim())
     setHasToken(!!token.trim())
+    if (bootError) window.location.reload()
   }
 
   async function newSession() {
@@ -70,6 +77,24 @@ export default function App() {
   }
 
   if (booting) return <div className="app">加载中……</div>
+
+  if (bootError) {
+    return (
+      <div className="app">
+        <div className="page">
+          <div className="card">
+            <div className="answer">需要访问口令才能使用。</div>
+            <div className="meta">{bootError}</div>
+            <div className="bar">
+              <button className="agent-btn" onClick={askToken}>
+                设置口令
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app">
