@@ -4,15 +4,16 @@
 
 ## 个人工作助手（RAG + Agent）｜独立开发｜2026.11
 
-在线 Demo：https://earn-all-you-want.up.railway.app
+在线 Demo：https://earn-all-you-want.up.railway.app（访问口令 PCAI1907）
 
-- 基于 FastAPI + React + SQLite 实现本地知识库问答系统，索引 FastAPI 官方文档 138 篇 / 1326 块，Docker 单端口部署，单次问答成本约 $0.00015。
-- 设计跨语言检索：中文问题先翻译为英文再检索，recall@5 由 95% 提升至 100%；剔除变更日志等元信息文档使索引体积减少 43%，检索耗时下降 25%。
-- 建立 20 题检索评测集与 20 题答案评测集（15 可答 + 5 应拒答），端到端准确率 84%（5 次均值），拒答准确率 100%；对“保留代码块”“双路索引”两种方案做了对照实验，实测无提升后回退。
-- 实现工具调用 Agent（检索 / 四则运算 / numpy 数组与矩阵计算 / 文件读写 / 列目录），11 项任务评测全部通过，覆盖缺文件、越界写入、提示词注入等异常场景；通过路径沙箱、AST 白名单、异常回传保证调用安全。
-- 将检索与计算能力封装为 MCP Server，可在 Claude Desktop、Cursor 等客户端中直接发现并调用；同时实现反向接入，Agent 可发现并消费外部 MCP Server 的工具（实测接入官方 time server）。
+- 基于 FastAPI + React + SQLite 实现知识库问答：索引 FastAPI 官方文档 158 篇 / 1326 块，清洗去噪后检索耗时降低 25%，Docker 单端口部署。
+- 设计切块与跨语言检索：按标题切节（700 字 / 重叠 120），中文问题先翻译再检索，recall@5 由 95% 提升至 100%。
+- 引入 LLM rerank 与多轮查询改写：20 题检索集 hit@1 由 70% 提升至 90%，追问场景 hit@1 提升 10 个百分点。
+- 实现两层拒答（阈值 0.45 + 提示词约束）与引用编号，20 题答案评测 84%（5 次均值），拒答题 5/5 正确，单次成本约 $0.00015。
+- 实现 Agent（6 工具 / 6 轮上限）与 MCP 双向接入：工具调用 SSE 实时展示、写文件人工确认、会话记忆；11 项任务评测通过，路径沙箱与 AST 白名单约束调用。
+- 工程化上线：多知识库与文档上传（md/txt/pdf，默认全库检索）、访问口令 + IP 限流、trace_id 与 /metrics、10 个测试与 GitHub Actions CI，Railway 公网部署。
 
-技术栈：Python、FastAPI、Pydantic、SQLite、React、Vite、Docker Compose、DeepSeek API、百炼 Embedding
+技术栈：Python、FastAPI、Pydantic、SQLite、React、Vite、Docker Compose、DeepSeek API、百炼 Embedding、MCP
 
 ---
 
@@ -33,5 +34,8 @@
 **Q：为什么中文问英文文档也能答？**
 embedding 模型是多语言的，本身有一定跨语言能力；再加一步“翻译成英文再检索”作为双查询召回，recall@5 到 100%。
 
+**Q：多知识库怎么做的？**
+元数据进 SQLite，每个库一个向量文件；上传后后台线程切块、批量 embedding；默认检索全部库，选择器只用于缩小范围；Railway 挂卷后持久化。
+
 **Q：成本怎么控制？**
-单次约 $0.00015，主要是输入 token（5 块资料约 700 token）。拒答走阈值不调模型，成本为 0。系统里记录了每次调用的 token、成本和延迟，可在统计页查看。
+单次约 $0.00015（生成部分），含翻译和 rerank 约 $0.0003–0.0005。拒答走阈值不调模型；统计页记录 token、成本和延迟。公开部署加了访问口令和 IP 限流，防止 key 被刷。
