@@ -42,8 +42,11 @@ MODEL = os.environ.get("EMBED_MODEL") or os.environ.get("BAILIAN_BASE_MODEL") or
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler())
 
 
-def embed(texts,model):
-    """一次请求把一批文本转成向量，返回 (向量列表, usage)。"""
+def embed(texts,model,retries=3):
+    """一次请求把一批文本转成向量，返回 (向量列表, usage)。
+
+    网络抖动（SSL EOF、超时）重试，避免单次失败中断整个索引或查询。
+    """
     body = {"model":model,"input":texts,"encoding_format":"float"}
     req = urllib.request.Request(
         f"{BASE}/embeddings",
@@ -51,8 +54,18 @@ def embed(texts,model):
         headers={"Content-Type":"application/json","Authorization":f"Bearer {KEY}"},
         method = "POST"
     )
-    with _OPENER.open(req,timeout=120) as resp:
-        data = json.loads(resp.read().decode("utf8"))
+    last = None
+    for attempt in range(retries):
+        try:
+            with _OPENER.open(req,timeout=120) as resp:
+                data = json.loads(resp.read().decode("utf8"))
+            break
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last = e
+            if attempt < retries - 1:
+                time.sleep(1.5 * (attempt + 1))
+    else:
+        raise last
     # 有的服务返回顺序不定，按 index 排好
     items = sorted(data["data"],key=lambda d:d.get("index",0))
     return [it["embedding"] for it in items], data.get("usage",{})

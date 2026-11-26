@@ -31,11 +31,11 @@ export async function deleteSession(sessionId) {
 }
 
 // ---------- 问答（SSE 流式） ----------
-export async function askStream(question, sessionId, onEvent) {
+export async function askStream(question, sessionId, onEvent, mode = 'quality') {
   const res = await fetch('/api/ask/stream', {
     method: 'POST',
     headers: JSON_HEADERS,
-    body: JSON.stringify({ question, session_id: sessionId }),
+    body: JSON.stringify({ question, session_id: sessionId, mode }),
   })
   if (!res.ok) throw new Error('HTTP ' + res.status)
 

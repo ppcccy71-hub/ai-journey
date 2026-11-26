@@ -9,6 +9,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
   const [refused, setRefused] = useState(false)
   const [loading, setLoading] = useState(false)
   const [input, setInput] = useState('')
+  const [mode, setMode] = useState('quality')
   const boxRef = useRef(null)
   const bottomRef = useRef(null)
 
@@ -72,7 +73,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
               `${u.completion_tokens || 0} · $${(evt.cost || 0).toFixed(6)}`,
           )
         }
-      })
+      }, mode)
     } catch (err) {
       acc = '出错了：' + err.message
     } finally {
@@ -138,7 +139,17 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
             ))}
           </div>
         )}
-        <div className="meta">{meta}</div>
+        <div className="meta-row">
+          <div className="mode-switch">
+            <button className={mode === 'quality' ? 'on' : ''} onClick={() => setMode('quality')}>
+              质量
+            </button>
+            <button className={mode === 'speed' ? 'on' : ''} onClick={() => setMode('speed')}>
+              速度
+            </button>
+          </div>
+          <div className="meta">{meta}</div>
+        </div>
         <div className="input-row">
           <input
             ref={boxRef}

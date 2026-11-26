@@ -1,0 +1,22 @@
+[
+  {"id": "f01", "history": [{"role": "user", "content": "怎么在 FastAPI 里声明请求体？"}, {"role": "assistant", "content": "把参数声明为 Pydantic 模型即可。"}],
+   "question": "那它支持嵌套模型吗？", "expect": ["tutorial/body-nested-models.md"]},
+  {"id": "f02", "history": [{"role": "user", "content": "路径参数怎么做数值校验？"}, {"role": "assistant", "content": "用 Path(gt=0) 这类约束。"}],
+   "question": "那查询参数呢？", "expect": ["tutorial/query-params-str-validations.md"]},
+  {"id": "f03", "history": [{"role": "user", "content": "怎么用 TestClient 写接口测试？"}, {"role": "assistant", "content": "导入 TestClient，传入 app 即可。"}],
+   "question": "异步接口的测试呢？", "expect": ["advanced/async-tests.md"]},
+  {"id": "f04", "history": [{"role": "user", "content": "怎么把创建成功的状态码改成 201？"}, {"role": "assistant", "content": "在装饰器里设置 status_code=201。"}],
+   "question": "那返回 404 怎么自定义错误信息？", "expect": ["tutorial/handling-errors.md"]},
+  {"id": "f05", "history": [{"role": "user", "content": "怎么直接返回 HTML 页面？"}, {"role": "assistant", "content": "使用 HTMLResponse。"}],
+   "question": "那怎么托管静态文件？", "expect": ["tutorial/static-files.md"]},
+  {"id": "f06", "history": [{"role": "user", "content": "怎么给应用加中间件？"}, {"role": "assistant", "content": "用 @app.middleware('http') 装饰器。"}],
+   "question": "那怎么统计每个请求的耗时？", "expect": ["tutorial/middleware.md"]},
+  {"id": "f07", "history": [{"role": "user", "content": "OAuth2 密码模式怎么实现登录？"}, {"role": "assistant", "content": "用 OAuth2PasswordBearer 和 token 端点。"}],
+   "question": "那 JWT 怎么生成和校验？", "expect": ["tutorial/security/oauth2-jwt.md"]},
+  {"id": "f08", "history": [{"role": "user", "content": "依赖注入怎么用？"}, {"role": "assistant", "content": "用 Depends 声明依赖。"}],
+   "question": "带 yield 的依赖呢？", "expect": ["tutorial/dependencies/dependencies-with-yield.md"]},
+  {"id": "f09", "history": [{"role": "user", "content": "怎么部署 FastAPI？"}, {"role": "assistant", "content": "用 uvicorn 启动。"}],
+   "question": "生产环境怎么开多个 worker？", "expect": ["deployment/server-workers.md"]},
+  {"id": "f10", "history": [{"role": "user", "content": "怎么让接口只返回部分字段？"}, {"role": "assistant", "content": "用 response_model。"}],
+   "question": "那怎么排除某些字段？", "expect": ["tutorial/response-model.md"]}
+]

@@ -11,6 +11,9 @@ import llm
 import step9_vector as s9
 import step13_agent as agent
 import store
+import query_rewrite
+import rerank
+import os
 
 SYSTEM = ("你是知识库助手。只能依据给定资料回答，每句话后用 [编号] 标注依据。\n"
           "资料里没有答案时，直接回答：资料中没有相关信息。不要编造。")
@@ -26,7 +29,10 @@ async def strip_api_prefix(request, call_next):
     return await call_next(request)
 
 
-MODEL_V, CHUNKS = s9.load_vectors()          # 启动时加载一次
+MODEL_V, CHUNKS = s9.load_vectors()
+
+ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重排
+ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写          # 启动时加载一次
 
 
 # ============================================================
@@ -37,6 +43,7 @@ class AskRequest(BaseModel):
     session_id: str | None = Field(None, max_length=64, description="会话 ID，传了就会存历史")
     top_k: int = Field(5, ge=1, le=8)
     min_score: float = Field(0.45, ge=0, le=1)
+    mode: str = Field("quality", pattern="^(speed|quality)$", description="speed=向量 top5，quality=top20+rerank")
 
 
 class SessionCreate(BaseModel):
@@ -56,9 +63,22 @@ def has_cjk(text: str) -> bool:
 
 
 def search(req: AskRequest):
-    # 知识库是英文文档：中文提问先翻成英文再检索，recall@5 从 95% 提到 100%
-    hits = s9.search_mixed(req.question, CHUNKS, MODEL_V, req.top_k, 2, has_cjk(req.question))
-    return hits, (hits[0][0] if hits else 0.0)
+    """检索：多轮改写 → 向量召回 10 条 → rerank 取 top_k。
+
+    拒答阈值用召回阶段的余弦最高分，不能被 rerank 的排序分替代。
+    """
+    history = history_of(req.session_id) if ENABLE_REWRITE else []
+    query = query_rewrite.rewrite(history, req.question) if history else req.question
+
+    depth = 20 if req.mode == "quality" else req.top_k
+    cand = s9.search_plus(query, CHUNKS, MODEL_V, depth, has_cjk(query))
+    best = cand[0][0] if cand else 0.0
+
+    if req.mode == "quality" and ENABLE_RERANK and cand and best >= req.min_score:
+        hits = rerank.rerank(query, cand, req.top_k)
+    else:
+        hits = cand[:req.top_k]
+    return hits, best
 
 
 def history_of(sid, limit=6):
