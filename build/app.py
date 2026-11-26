@@ -1,9 +1,11 @@
 import json
+import threading
+import uuid
 from collections import defaultdict, deque
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -14,6 +16,8 @@ import step8_embed as s8
 import step13_agent as agent
 import store
 import agent_runs
+import kb_index
+import kb_store
 import query_rewrite
 import rerank
 import os
@@ -33,6 +37,8 @@ async def strip_api_prefix(request, call_next):
 
 
 MODEL_V, CHUNKS = s9.load_vectors()
+kb_store.init()
+kb_index.ensure_default()
 
 ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重排
 ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写
@@ -67,6 +73,7 @@ class AskRequest(BaseModel):
     top_k: int = Field(5, ge=1, le=8)
     min_score: float = Field(0.45, ge=0, le=1)
     mode: str = Field("quality", pattern="^(speed|quality)$", description="speed=向量 top5，quality=top20+rerank")
+    kb: str = Field("fastapi", max_length=40, description="知识库 ID")
 
 
 class SessionCreate(BaseModel):
@@ -103,15 +110,11 @@ def search(req: AskRequest):
     history = history_of(req.session_id) if ENABLE_REWRITE else []
     query = query_rewrite.rewrite(history, req.question) if history else req.question
 
-    depth = 20 if req.mode == "quality" else req.top_k
-    cand = s9.search_plus(query, CHUNKS, MODEL_V, depth, has_cjk(query))
-    best = cand[0][0] if cand else 0.0
-
-    if req.mode == "quality" and ENABLE_RERANK and cand and best >= req.min_score:
-        hits = rerank.rerank(query, cand, req.top_k)
+    if req.mode == "quality" and not ENABLE_RERANK:
+        req_mode = "speed"
     else:
-        hits = cand[:req.top_k]
-    return hits, best
+        req_mode = req.mode
+    return kb_index.search(req.kb, query, req.top_k, req_mode, has_cjk(query))
 
 
 def history_of(sid, limit=6):
@@ -176,7 +179,8 @@ def health():
     return {"status": "ok", "model": llm.MODEL, "chunks": len(CHUNKS),
             "llm_configured": bool(llm.BASE and llm.KEY),
             "embed_configured": bool(s8.BASE and s8.KEY),
-            "access_protected": bool(ACCESS_TOKEN)}
+            "access_protected": bool(ACCESS_TOKEN),
+            "kbs": len(kb_store.list_kbs())}
 
 
 @app.post("/ask")
@@ -294,6 +298,56 @@ def agent_approve(req: AgentApproveRequest, request: Request):
     if not agent_runs.approve(req.run_id, req.approved):
         raise HTTPException(404, "任务不存在或已结束")
     return {"ok": True}
+
+
+class KBCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40)
+
+
+@app.get("/kbs")
+def list_kbs(request: Request):
+    guard(request)
+    return {"items": kb_store.list_kbs()}
+
+
+@app.post("/kbs")
+def create_kb_endpoint(req: KBCreate, request: Request):
+    guard(request)
+    return kb_store.create_kb(req.name.strip())
+
+
+@app.get("/kbs/{kb_id}")
+def kb_detail(kb_id: str, request: Request):
+    guard(request)
+    kb = kb_store.get_kb(kb_id)
+    if kb is None:
+        raise HTTPException(404, "知识库不存在")
+    kb["docs"] = kb_store.list_docs(kb_id)
+    return kb
+
+
+@app.delete("/kbs/{kb_id}")
+def remove_kb(kb_id: str, request: Request):
+    guard(request)
+    if kb_store.get_kb(kb_id) is None:
+        raise HTTPException(404, "知识库不存在")
+    kb_index.path_of(kb_id).unlink(missing_ok=True)
+    kb_store.delete_kb(kb_id)
+    return {"ok": True}
+
+
+@app.post("/kbs/{kb_id}/documents")
+def upload_document(kb_id: str, request: Request, file: UploadFile = File(...)):
+    guard(request)
+    if kb_store.get_kb(kb_id) is None:
+        raise HTTPException(404, "知识库不存在")
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in (".md", ".txt", ".pdf"):
+        raise HTTPException(400, "只支持 .md / .txt / .pdf")
+    tmp = kb_index.KB_DIR / f"upload_{uuid.uuid4().hex}{suffix}"
+    tmp.write_bytes(file.file.read())
+    threading.Thread(target=kb_index.ingest_file, args=(kb_id, tmp, file.filename), daemon=True).start()
+    return {"status": "indexing", "filename": file.filename}
 
 
 @app.get("/stats")

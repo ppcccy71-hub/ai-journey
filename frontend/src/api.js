@@ -9,6 +9,11 @@ export function setToken(token) {
   localStorage.setItem('access_token', token || '')
 }
 
+function tokenHeader() {
+  const token = getToken()
+  return token ? { 'X-Access-Token': token } : {}
+}
+
 function authHeaders() {
   const headers = { ...JSON_HEADERS }
   const token = getToken()
@@ -76,11 +81,11 @@ export async function deleteSession(sessionId) {
 }
 
 // ---------- 问答（SSE 流式） ----------
-export async function askStream(question, sessionId, onEvent, mode = 'quality') {
+export async function askStream(question, sessionId, onEvent, mode = 'quality', kb = 'fastapi') {
   const res = await fetch('/api/ask/stream', {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ question, session_id: sessionId, mode }),
+    body: JSON.stringify({ question, session_id: sessionId, mode, kb }),
   })
   await readSSE(res, onEvent)
 }
@@ -122,4 +127,40 @@ export async function getStats() {
 
 export async function getDailyStats(days = 7) {
   return toJson(await fetch(`/api/stats/daily?days=${days}`))
+}
+
+
+// ---------- 知识库 ----------
+export async function listKbs() {
+  const data = await toJson(await fetch('/api/kbs', { headers: tokenHeader() }))
+  return data.items || []
+}
+
+export async function createKb(name) {
+  return toJson(
+    await fetch('/api/kbs', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name }),
+    }),
+  )
+}
+
+export async function deleteKb(kbId) {
+  return toJson(
+    await fetch(`/api/kbs/${kbId}`, { method: 'DELETE', headers: tokenHeader() }),
+  )
+}
+
+export async function uploadDocument(kbId, file) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`/api/kbs/${kbId}/documents`, {
+    method: 'POST',
+    headers: tokenHeader(),
+    body: form,
+  })
+  if (res.status === 401) throw new Error('需要访问口令')
+  if (!res.ok) throw new Error('HTTP ' + res.status)
+  return res.json()
 }

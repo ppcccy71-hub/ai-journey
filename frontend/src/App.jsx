@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { listSessions, createSession, deleteSession, getToken, setToken } from './api'
+import { listSessions, createSession, deleteSession, getToken, setToken, listKbs } from './api'
 import AskView from './views/AskView'
 import AgentView from './views/AgentView'
 import StatsView from './views/StatsView'
+import KnowledgeView from './views/KnowledgeView'
 
 export default function App() {
   const [tab, setTab] = useState('ask')
@@ -10,11 +11,23 @@ export default function App() {
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)
   const [hasToken, setHasToken] = useState(!!getToken())
+  const [kbs, setKbs] = useState([])
+  const [kb, setKb] = useState('fastapi')
 
   const refresh = useCallback(async () => {
     const list = await listSessions()
     setSessions(list)
     return list
+  }, [])
+
+  // 启动：加载知识库列表
+  useEffect(() => {
+    listKbs()
+      .then((items) => {
+        setKbs(items)
+        if (items.length && !items.some((k) => k.id === 'fastapi')) setKb(items[0].id)
+      })
+      .catch(() => {})
   }, [])
 
   // 启动：加载会话列表；一个都没有就自动建一个
@@ -76,6 +89,9 @@ export default function App() {
           <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>
             知识问答
           </button>
+          <button className={tab === 'kb' ? 'active' : ''} onClick={() => setTab('kb')}>
+            知识库
+          </button>
           <button className={tab === 'agent' ? 'active' : ''} onClick={() => setTab('agent')}>
             Agent 控制台
           </button>
@@ -117,6 +133,9 @@ export default function App() {
           <main className="main">
             <AskView
               sessionId={currentId}
+              kb={kb}
+              kbs={kbs}
+              onKbChange={setKb}
               onChanged={refresh}
               onNeedSession={async () => {
                 const created = await createSession('新会话')
@@ -127,6 +146,8 @@ export default function App() {
             />
           </main>
         </div>
+      ) : tab === 'kb' ? (
+        <KnowledgeView kb={kb} onSelect={setKb} onChanged={setKbs} />
       ) : tab === 'agent' ? (
         <AgentView sessionId={currentId} />
       ) : (

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { askStream, getSession } from '../api'
 
-export default function AskView({ sessionId, onChanged, onNeedSession }) {
+export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, onKbChange }) {
   const [messages, setMessages] = useState([])
   const [streaming, setStreaming] = useState('')
   const [sources, setSources] = useState([])
@@ -73,7 +73,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
               `${u.completion_tokens || 0} · $${(evt.cost || 0).toFixed(6)}`,
           )
         }
-      }, mode)
+      }, mode, kb)
     } catch (err) {
       acc = '出错了：' + err.message
     } finally {
@@ -140,6 +140,13 @@ export default function AskView({ sessionId, onChanged, onNeedSession }) {
           </div>
         )}
         <div className="meta-row">
+          <select className="kb-select" value={kb} onChange={(e) => onKbChange(e.target.value)}>
+            {(kbs || []).map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.name}
+              </option>
+            ))}
+          </select>
           <div className="mode-switch">
             <button className={mode === 'quality' ? 'on' : ''} onClick={() => setMode('quality')}>
               质量
