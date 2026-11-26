@@ -75,7 +75,7 @@ export default function App() {
     <div className="app">
       <header>
         <div className="brand">
-          <span className="dot" />
+          <img className="logo" src="/logo.svg" alt="logo" />
           <h1>个人工作助手</h1>
           <span className="tag">RAG + Agent</span>
           <button className="token-btn" onClick={askToken}>

@@ -1,6 +1,10 @@
 # 个人知识助手
 
-基于 DeepSeek 的本地知识库问答与工具调用助手。在线 Demo：https://earn-all-you-want.up.railway.app支持带引用的文档问答、多步任务的 Agent、多会话记录和用量统计。
+<p align="center"><img src="../docs/logo.svg" width="88" alt="logo"></p>
+
+基于 DeepSeek 的本地知识库问答与工具调用助手。在线 Demo：https://earn-all-you-want.up.railway.app
+
+支持带引用的文档问答、多步任务的 Agent、多会话记录和用量统计。
 
 ![架构](../docs/architecture.svg)
 

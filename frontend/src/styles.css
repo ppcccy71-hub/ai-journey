@@ -478,3 +478,5 @@ nav button.active {
 
 .kb-actions { display: flex; gap: 4px; }
 .kb-actions .del { border: 0; background: transparent; color: #b6bcc7; font-size: 15px; cursor: pointer; }
+
+.logo { width: 28px; height: 28px; border-radius: 8px; box-shadow: 0 4px 12px rgba(59, 91, 219, .28); }
