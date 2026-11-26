@@ -13,8 +13,13 @@ import json
 import sys
 from pathlib import Path
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+try:
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+    MCP_AVAILABLE = True
+except ImportError:              # 没装 mcp 时降级：Agent 仍可用本地工具
+    ClientSession = StdioServerParameters = stdio_client = None
+    MCP_AVAILABLE = False
 
 CONFIG = Path(__file__).resolve().parent / "mcp_servers.json"
 
@@ -53,6 +58,8 @@ async def _call_one(server, tool, args):
 def external_tools():
     """返回 [{schema, server, tool}]，schema 已转成 OpenAI/DeepSeek 格式。"""
     out = []
+    if not MCP_AVAILABLE:
+        return out
     for server in load_servers():
         name = server["name"]
         try:
