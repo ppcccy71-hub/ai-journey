@@ -113,11 +113,26 @@ def chunk_text(text: str, filename: str):
     return chunks
 
 
+CJK_SPACE = re.compile(r"(?<=[\u4e00-\u9fff])[ \t\u3000\xa0]+(?=[\u4e00-\u9fff])")
+CJK_NL = re.compile(r"(?<=[\u4e00-\u9fff])[ \t\u3000\xa0]*\n[ \t\u3000\xa0]*(?=[\u4e00-\u9fff])")
+CJK_PUNCT_SPACE = re.compile(r"[ \t\u3000\xa0]+(?=[，。；：、！？）》」』])")
+
+
+def tidy_cn(text: str) -> str:
+    """PDF 抽文本常把汉字拆成单字行或插空格，这里合并；空行保留作段落分隔。"""
+    for _ in range(3):
+        text = CJK_NL.sub("", text)
+        text = CJK_SPACE.sub("", text)
+    text = CJK_PUNCT_SPACE.sub("", text)
+    return text
+
+
 def read_file(path: Path) -> str:
     if path.suffix.lower() == ".pdf":
         from pypdf import PdfReader
         reader = PdfReader(str(path))
-        return "\n\n".join(page.extract_text() or "" for page in reader.pages)
+        text = "\n\n".join(page.extract_text() or "" for page in reader.pages)
+        return tidy_cn(text)
     raw = path.read_bytes()
     for enc in ("utf-8", "gbk", "latin-1"):
         try:

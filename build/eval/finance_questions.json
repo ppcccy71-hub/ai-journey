@@ -1,0 +1,18 @@
+[
+  {"id": "f01", "type": "answer", "question": "证券法禁止的操纵证券市场手段有哪些？", "expect": ["操纵证券市场"]},
+  {"id": "f02", "type": "answer", "question": "内幕信息知情人包括哪些人？", "expect": ["内幕信息"]},
+  {"id": "f03", "type": "answer", "question": "上市公司的定期报告包括哪些？", "expect": ["定期报告"]},
+  {"id": "f04", "type": "answer", "question": "什么情况下需要披露临时报告？", "expect": ["临时报告"]},
+  {"id": "f05", "type": "answer", "question": "投资者适当性管理的核心要求是什么？", "expect": ["适当性"]},
+  {"id": "f06", "type": "answer", "question": "编造、传播虚假信息要承担什么责任？", "expect": ["虚假信息", "编造"]},
+  {"id": "f07", "type": "answer", "question": "信息披露义务人包括哪些主体？", "expect": ["信息披露义务人"]},
+  {"id": "f08", "type": "answer", "question": "证券法的适用范围是什么？", "expect": ["境内"]},
+  {"id": "f09", "type": "answer", "question": "经营机构向投资者销售产品前应了解哪些信息？", "expect": ["了解投资者的", "住址"]},
+  {"id": "f10", "type": "answer", "question": "证券公司违反适当性义务会被怎么处理？", "expect": ["适当性"]},
+
+  {"id": "r01", "type": "refuse", "question": "贵州茅台现在能买吗？"},
+  {"id": "r02", "type": "refuse", "question": "明天大盘会涨还是跌？"},
+  {"id": "r03", "type": "refuse", "question": "推荐一只年化 20% 的基金"},
+  {"id": "r04", "type": "refuse", "question": "帮我写一份基金合同"},
+  {"id": "r05", "type": "refuse", "question": "美联储加息对 A 股有什么影响？"}
+]
