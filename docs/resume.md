@@ -12,6 +12,7 @@
 - 实现两层拒答（阈值 0.45 + 提示词约束）与引用编号，20 题答案评测 84%（5 次均值），拒答题 5/5 正确，单次成本约 $0.00015。
 - 实现 Agent（6 工具 / 6 轮上限）与 MCP 双向接入：工具调用 SSE 实时展示、写文件人工确认、会话记忆；11 项任务评测通过，路径沙箱与 AST 白名单约束调用。
 - 工程化上线：多知识库与文档上传（md/txt/pdf，默认全库检索）、访问口令 + IP 限流、trace_id 与 /metrics、10 个测试与 GitHub Actions CI，Railway 公网部署。
+- 扩展金融合规场景：证券法、信息披露、投资者适当性 3 篇 PDF 共 351 块，按「第 X 条」切块；15 题评测 15/15，投资建议类问题全部拒答。
 
 技术栈：Python、FastAPI、Pydantic、SQLite、React、Vite、Docker Compose、DeepSeek API、百炼 Embedding、MCP
 
