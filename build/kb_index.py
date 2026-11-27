@@ -3,6 +3,7 @@
 """多知识库的索引：每个库一个 vectors JSON，支持上传文档后增量追加。"""
 import json
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -79,13 +80,28 @@ def save(kb_id: str, chunks, model=EMBED_MODEL, dim=1024):
     CACHE.pop(kb_id, None)
 
 
+LEGAL_ARTICLE = re.compile(r"(?m)^[ \t]*(第[一二三四五六七八九十百千零〇0-9]+条)[ \t]*")
+LEGAL_COUNT = re.compile(r"第[一二三四五六七八九十百千零〇0-9]+条")
+
+
+def normalize_legal(text: str, filename: str) -> str:
+    """法规类文档：把「第X条」变成 ## 小节，按条文切块。"""
+    if len(LEGAL_COUNT.findall(text)) < 10:
+        return text
+    text = LEGAL_ARTICLE.sub("\n## \\1\n", text)
+    if not text.lstrip().startswith("#"):
+        text = f"# {filename}\n\n" + text
+    return text
+
+
 def chunk_text(text: str, filename: str):
-    """复用 ingest_docs 的清洗与切块逻辑。"""
+    """复用 ingest_docs 的清洗与切块逻辑；法规文档按条文切。"""
+    text = normalize_legal(text, filename)
     cleaned = ing.clean_text(text)
     chunks = []
     for h1, h2, body in ing.split_sections(cleaned):
         head = f"{h1} / {h2}" if h2 else h1
-        if len(body) < 20:          # 上传的短文档也要能进库
+        if len(body) < 10:          # 短条文（如「本条自公布之日起施行」）也要保留
             continue
         for piece in ing.split_long(body, 700, 120):
             chunks.append({"text": f"{head}\n\n{piece}", "source": filename,
