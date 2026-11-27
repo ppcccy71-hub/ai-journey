@@ -18,6 +18,9 @@ import store
 import agent_runs
 import kb_index
 import kb_store
+import market
+import monitor
+import watch_store
 import query_rewrite
 import rerank
 import os
@@ -59,6 +62,7 @@ async def strip_api_prefix(request, call_next):
 MODEL_V, CHUNKS = s9.load_vectors()
 kb_store.init()
 kb_index.ensure_default()
+monitor.start()
 
 ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重排
 ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写
@@ -385,6 +389,78 @@ def upload_document(kb_id: str, request: Request, file: UploadFile = File(...)):
     tmp.write_bytes(file.file.read())
     threading.Thread(target=kb_index.ingest_file, args=(kb_id, tmp, file.filename), daemon=True).start()
     return {"status": "indexing", "filename": file.filename}
+
+
+class WatchAdd(BaseModel):
+    symbol: str = Field(..., min_length=6, max_length=12)
+
+
+@app.get("/watchlist")
+def get_watchlist(request: Request):
+    guard(request)
+    items = watch_store.list_watch()
+    if not items:
+        return {"items": []}
+    try:
+        quotes = {q["symbol"]: q for q in market.fetch([i["symbol"] for i in items])}
+    except Exception:
+        quotes = {}
+    # 行情接口返回 6 位代码，自选股存的是带前缀的代码，按后 6 位匹配
+    return {"items": [dict(i, quote=quotes.get(i["symbol"][-6:])) for i in items]}
+
+
+@app.post("/watchlist")
+def add_watch(req: WatchAdd, request: Request):
+    guard(request)
+    try:
+        symbol = market.normalize(req.symbol)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    name = ""
+    try:
+        found = market.fetch([symbol])
+        name = found[0]["name"] if found else ""
+    except Exception:
+        pass
+    watch_store.add(symbol, name)
+    return {"symbol": symbol, "name": name}
+
+
+@app.delete("/watchlist/{symbol}")
+def remove_watch(symbol: str, request: Request):
+    guard(request)
+    watch_store.remove(symbol)
+    return {"ok": True}
+
+
+@app.get("/alerts")
+def get_alerts(request: Request, limit: int = 50):
+    guard(request)
+    return {"items": watch_store.list_alerts(min(limit, 200))}
+
+
+@app.post("/alerts/{alert_id}/ack")
+def ack_alert(alert_id: int, request: Request):
+    guard(request)
+    watch_store.ack(alert_id)
+    return {"ok": True}
+
+
+@app.post("/monitor/scan")
+def monitor_scan(request: Request):
+    guard(request)
+    created = monitor.scan()
+    return {"created": created, "last_scan": monitor.STATE["last_scan"]}
+
+
+@app.get("/monitor/status")
+def monitor_status(request: Request):
+    guard(request)
+    return {"enabled": monitor.STATE["enabled"],
+            "trading_hours": monitor.in_trading_hours(),
+            "last_scan": monitor.STATE["last_scan"],
+            "watch_count": len(watch_store.list_watch()),
+            "alerts_today": watch_store.count_today()}
 
 
 @app.get("/metrics")

@@ -174,3 +174,37 @@ export async function renameKb(kbId, name) {
     }),
   )
 }
+
+
+// ---------- 监控 ----------
+export async function listWatch() {
+  const data = await toJson(await fetch('/api/watchlist', { headers: authHeaders() }))
+  return data.items || []
+}
+
+export async function addWatch(symbol) {
+  return toJson(await fetch('/api/watchlist', {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify({ symbol }),
+  }))
+}
+
+export async function removeWatch(symbol) {
+  return toJson(await fetch(`/api/watchlist/${symbol}`, { method: 'DELETE', headers: authHeaders() }))
+}
+
+export async function listAlerts(limit = 50) {
+  const data = await toJson(await fetch(`/api/alerts?limit=${limit}`, { headers: authHeaders() }))
+  return data.items || []
+}
+
+export async function ackAlert(id) {
+  return toJson(await fetch(`/api/alerts/${id}/ack`, { method: 'POST', headers: authHeaders() }))
+}
+
+export async function scanMonitor() {
+  return toJson(await fetch('/api/monitor/scan', { method: 'POST', headers: authHeaders() }))
+}
+
+export async function getMonitorStatus() {
+  return toJson(await fetch('/api/monitor/status', { headers: authHeaders() }))
+}

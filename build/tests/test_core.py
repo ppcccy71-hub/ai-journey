@@ -6,12 +6,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("ACCESS_TOKEN", "")
+os.environ.setdefault("ENABLE_MONITOR", "0")
 
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import app as app_module
+import monitor
 import kb_index
 import step13_agent as agent
 
@@ -95,3 +97,20 @@ def test_access_token_required(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         app_module.guard(_Request())
     assert exc.value.status_code == 401
+
+
+# ---------- 监控规则 ----------
+def test_monitor_rules_hit():
+    quote = {"change_pct": 4.2, "amplitude": 6.1, "turnover": 1.0}
+    assert monitor.RULES[0]["hit"](quote)      # 上涨
+    assert not monitor.RULES[1]["hit"](quote)  # 下跌
+    assert monitor.RULES[2]["hit"](quote)      # 振幅
+
+
+def test_trading_hours():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    cn = ZoneInfo("Asia/Shanghai")
+    assert monitor.in_trading_hours(datetime(2026, 11, 25, 10, 0, tzinfo=cn))
+    assert not monitor.in_trading_hours(datetime(2026, 11, 25, 12, 0, tzinfo=cn))
+    assert not monitor.in_trading_hours(datetime(2026, 11, 28, 10, 0, tzinfo=cn))

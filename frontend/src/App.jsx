@@ -4,6 +4,7 @@ import AskView from './views/AskView'
 import AgentView from './views/AgentView'
 import StatsView from './views/StatsView'
 import KnowledgeView from './views/KnowledgeView'
+import MonitorView from './views/MonitorView'
 
 export default function App() {
   const [tab, setTab] = useState('ask')
@@ -114,6 +115,9 @@ export default function App() {
           <button className={tab === 'kb' ? 'active' : ''} onClick={() => setTab('kb')}>
             知识库
           </button>
+          <button className={tab === 'monitor' ? 'active' : ''} onClick={() => setTab('monitor')}>
+            监控
+          </button>
           <button className={tab === 'agent' ? 'active' : ''} onClick={() => setTab('agent')}>
             Agent 控制台
           </button>
@@ -170,6 +174,8 @@ export default function App() {
         </div>
       ) : tab === 'kb' ? (
         <KnowledgeView kb={kb} onSelect={setKb} onChanged={setKbs} />
+      ) : tab === 'monitor' ? (
+        <MonitorView />
       ) : tab === 'agent' ? (
         <AgentView sessionId={currentId} />
       ) : (
