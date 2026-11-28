@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import app as app_module
+import brief
 import finance_tools
 import market
 import monitor
@@ -178,3 +179,37 @@ def test_finance_irr():
 def test_agent_exposes_finance_tools():
     names = {t["function"]["name"] for t in agent.LOCAL_TOOLS}
     assert {"finance_calc", "stock_quote"} <= names
+
+
+# ---------- 今日综述 ----------
+def test_brief_cache(monkeypatch):
+    calls = {"n": 0}
+
+    def fake_chat(messages, **kwargs):
+        calls["n"] += 1
+        return "今日半导体领涨，自选股宁德时代走强。注意波动风险。", {"prompt_tokens": 10, "completion_tokens": 20}
+
+    monkeypatch.setattr(brief, "collect", lambda: (
+        [{"name": "半导体", "change_pct": 3.2, "leader": "某股"}],
+        [{"name": "宁德时代", "change_pct": 5.7, "turnover": 1.7}],
+        [],
+    ))
+    monkeypatch.setattr(brief.llm, "stream_chat", fake_chat)
+    brief._CACHE.update({"text": "", "at": 0.0, "watch": 0})
+
+    first = brief.generate()
+    second = brief.generate()
+    assert first["cached"] is False
+    assert second["cached"] is True
+    assert calls["n"] == 1
+
+
+def test_brief_skips_llm_without_watch(monkeypatch):
+    calls = {"n": 0}
+    monkeypatch.setattr(brief, "collect", lambda: (
+        [{"name": "半导体", "change_pct": 3.2, "leader": "某股"}], [], []))
+    monkeypatch.setattr(brief.llm, "stream_chat", lambda *a, **k: calls.update(n=calls["n"] + 1))
+    brief._CACHE.update({"text": "", "at": 0.0, "watch": 0})
+    data = brief.generate()
+    assert "还没有自选股" in data["text"]
+    assert calls["n"] == 0

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listKbs, listWatch, getSectors, getMonitorStatus, listAlerts } from '../api'
+import { listKbs, listWatch, getSectors, getMonitorStatus, listAlerts, getBrief } from '../api'
 
 const FEATURES = [
   {
@@ -45,6 +45,8 @@ function fmtPct(v) {
 export default function HomeView({ onNavigate, onAsk }) {
   const [live, setLive] = useState(null)
   const [liveError, setLiveError] = useState('')
+  const [brief, setBrief] = useState(null)
+  const [briefLoading, setBriefLoading] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -71,6 +73,21 @@ export default function HomeView({ onNavigate, onAsk }) {
     }
   }, [])
 
+  async function loadBrief(force = false) {
+    setBriefLoading(true)
+    try {
+      setBrief(await getBrief(force))
+    } catch {
+      setBrief(null)
+    } finally {
+      setBriefLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadBrief()
+  }, [])
+
   const status = {
     ask: live?.finance
       ? `${live.finance.chunk_count} 块法规 · 15/15`
@@ -78,7 +95,7 @@ export default function HomeView({ onNavigate, onAsk }) {
     monitor: live?.topSector
       ? `自选 ${live.watchCount} 只 · ${live.topSector.name} ${fmtPct(live.topSector.change_pct)}`
       : 'K 线 · 板块 · 异动解读',
-    agent: '6 类计算 · 21 个测试',
+    agent: '6 类计算 · 23 个测试',
   }
 
   return (
@@ -127,6 +144,21 @@ export default function HomeView({ onNavigate, onAsk }) {
         </div>
       </section>
 
+      {brief?.text && (
+        <section className="card home-brief">
+          <div className="chart-title">
+            今日综述
+            <span className="brief-meta">
+              {briefLoading ? '生成中……' : `${fmtTime(brief.generated_at)} 生成`}
+              <button className="brief-refresh" onClick={() => loadBrief(true)} disabled={briefLoading}>
+                刷新
+              </button>
+            </span>
+          </div>
+          <p>{brief.text}</p>
+        </section>
+      )}
+
       <div className="home-grid">
         {FEATURES.map((f) => (
           <div key={f.key} className="card home-card" onClick={() => onNavigate(f.key)}>
@@ -155,7 +187,7 @@ export default function HomeView({ onNavigate, onAsk }) {
           [String(live?.finance?.chunk_count ?? 351), '块法规'],
           [live ? String(live.watchCount) : '—', '只自选股'],
           [live ? String(live.alerts) : '—', '今日告警'],
-          ['21', '个测试'],
+          ['23', '个测试'],
         ].map(([num, label]) => (
           <div key={label} className="home-stat">
             <b>{num}</b>

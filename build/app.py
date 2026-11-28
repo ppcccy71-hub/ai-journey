@@ -17,6 +17,7 @@ import step13_agent as agent
 import web_tools
 import store
 import agent_runs
+import brief
 import kb_index
 import kb_store
 import market
@@ -495,6 +496,12 @@ def monitor_status(request: Request):
             "last_scan": monitor.STATE["last_scan"],
             "watch_count": len(watch_store.list_watch()),
             "alerts_today": watch_store.count_today()}
+
+
+@app.get("/brief")
+def get_brief(request: Request, force: int = 0):
+    guard(request)
+    return brief.generate(force=bool(force))
 
 
 @app.get("/metrics")

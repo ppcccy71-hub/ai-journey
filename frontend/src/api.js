@@ -231,3 +231,9 @@ export async function getSectorStocks(code, limit = 10) {
   )
   return data.items || []
 }
+
+
+// ---------- 今日综述 ----------
+export async function getBrief(force = false) {
+  return toJson(await fetch(`/api/brief${force ? '?force=1' : ''}`, { headers: authHeaders() }))
+}
