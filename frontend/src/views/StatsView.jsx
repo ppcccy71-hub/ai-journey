@@ -14,14 +14,16 @@ function Card({ label, value, hint }) {
 export default function StatsView() {
   const [stats, setStats] = useState(null)
   const [daily, setDaily] = useState([])
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    getStats().then(setStats).catch(() => {})
+    getStats().then(setStats).catch((err) => setError(err.message))
     getDailyStats(7)
       .then((data) => setDaily(data.items || []))
-      .catch(() => {})
+      .catch((err) => setError(err.message))
   }, [])
 
+  if (error && !stats) return <div className="page">统计加载失败：{error}</div>
   if (!stats) return <div className="page">加载中……</div>
 
   const maxQueries = Math.max(1, ...daily.map((d) => d.queries))

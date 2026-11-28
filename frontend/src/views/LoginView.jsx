@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { authLogin, authRegister, setToken, getToken } from '../api'
+import { authLogin, authRegister, setToken, getToken, getMe } from '../api'
 
-export default function LoginView({ onDone }) {
+export default function LoginView({ onLogin }) {
   const [mode, setMode] = useState('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -17,7 +17,7 @@ export default function LoginView({ onDone }) {
         ? await authLogin(username.trim(), password)
         : await authRegister(username.trim(), password)
       setToken(data.token)
-      onDone?.()
+      onLogin?.(data.user)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -25,11 +25,15 @@ export default function LoginView({ onDone }) {
     }
   }
 
-  function tokenLogin() {
+  async function tokenLogin() {
     const token = window.prompt('输入访问口令（管理员/Demo 用）', getToken())
     if (!token) return
     setToken(token.trim())
-    onDone?.()
+    try {
+      onLogin?.(await getMe())
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   return (

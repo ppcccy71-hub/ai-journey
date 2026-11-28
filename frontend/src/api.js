@@ -76,7 +76,7 @@ async function readSSE(res, onEvent) {
 
 // ---------- 会话 ----------
 export async function listSessions() {
-  const data = await toJson(await fetch('/api/sessions'))
+  const data = await toJson(await fetch('/api/sessions', { headers: authHeaders() }))
   return data.sessions || []
 }
 
@@ -91,7 +91,7 @@ export async function createSession(title = '新会话') {
 }
 
 export async function getSession(sessionId) {
-  return toJson(await fetch(`/api/sessions/${sessionId}`))
+  return toJson(await fetch(`/api/sessions/${sessionId}`, { headers: authHeaders() }))
 }
 
 export async function deleteSession(sessionId) {
@@ -140,17 +140,17 @@ export async function approveAgent(runId, approved) {
 
 // ---------- 统计 ----------
 export async function getStats() {
-  return toJson(await fetch('/api/stats'))
+  return toJson(await fetch('/api/stats', { headers: authHeaders() }))
 }
 
 export async function getDailyStats(days = 7) {
-  return toJson(await fetch(`/api/stats/daily?days=${days}`))
+  return toJson(await fetch(`/api/stats/daily?days=${days}`, { headers: authHeaders() }))
 }
 
 
 // ---------- 知识库 ----------
 export async function listKbs() {
-  const data = await toJson(await fetch('/api/kbs', { headers: tokenHeader() }))
+  const data = await toJson(await fetch('/api/kbs', { headers: authHeaders() }))
   return data.items || []
 }
 
@@ -166,7 +166,7 @@ export async function createKb(name) {
 
 export async function deleteKb(kbId) {
   return toJson(
-    await fetch(`/api/kbs/${kbId}`, { method: 'DELETE', headers: tokenHeader() }),
+    await fetch(`/api/kbs/${kbId}`, { method: 'DELETE', headers: authHeaders() }),
   )
 }
 
@@ -175,7 +175,7 @@ export async function uploadDocument(kbId, file) {
   form.append('file', file)
   const res = await fetch(`/api/kbs/${kbId}/documents`, {
     method: 'POST',
-    headers: tokenHeader(),
+    headers: authHeaders(),
     body: form,
   })
   if (res.status === 401) throw new Error('需要访问口令')

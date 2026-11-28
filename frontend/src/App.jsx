@@ -25,8 +25,9 @@ export default function App() {
     return list
   }, [])
 
-  // 启动：加载知识库列表
+  // 登录后加载知识库列表（登录前请求会 401，不能只跑一次）
   useEffect(() => {
+    if (!user) return
     listKbs()
       .then((items) => {
         setKbs(items)
@@ -34,7 +35,30 @@ export default function App() {
         setKb((prev) => prev || (items.some((k) => k.id === '金融合规') ? '金融合规' : 'all'))
       })
       .catch(() => {})
-  }, [])
+  }, [user])
+
+  async function loadSessions() {
+    let list = await refresh()
+    if (list.length === 0) {
+      const created = await createSession('第一次对话')
+      list = await refresh()
+      setCurrentId(created.id)
+    } else {
+      setCurrentId(list[0].id)
+    }
+  }
+
+  async function afterLogin(me) {
+    setUser(me)
+    setBooting(true)
+    try {
+      await loadSessions()
+    } catch (err) {
+      setBootError(err.message)
+    } finally {
+      setBooting(false)
+    }
+  }
 
   // 启动：先校验登录，再加载会话；一个都没有就自动建一个
   useEffect(() => {
@@ -44,20 +68,10 @@ export default function App() {
         return
       }
       try {
-        const me = await getMe()
-        setUser(me)
-        let list = await refresh()
-        if (list.length === 0) {
-          const created = await createSession('第一次对话')
-          list = await refresh()
-          setCurrentId(created.id)
-        } else {
-          setCurrentId(list[0].id)
-        }
+        await afterLogin(await getMe())
       } catch (err) {
         clearToken()
         setUser(null)
-      } finally {
         setBooting(false)
       }
     })()
@@ -86,7 +100,7 @@ export default function App() {
   if (booting) return <div className="app">加载中……</div>
 
   if (!user) {
-    return <LoginView onDone={() => window.location.reload()} />
+    return <LoginView onLogin={afterLogin} />
   }
 
   return (
@@ -101,7 +115,9 @@ export default function App() {
             className="token-btn"
             onClick={() => {
               clearToken()
-              window.location.reload()
+              setUser(null)
+              setSessions([])
+              setCurrentId(null)
             }}
           >
             退出

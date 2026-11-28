@@ -75,7 +75,7 @@ ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重�
 ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写
 
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "")               # 为空则不校验
-RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "20"))
+RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "60"))
 _HITS = defaultdict(deque)
 
 
