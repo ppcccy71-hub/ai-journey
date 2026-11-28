@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import app as app_module
+import finance_tools
 import market
 import monitor
 import web_tools
@@ -155,3 +156,25 @@ def test_sectors_parse(monkeypatch):
     items = market.sectors(5)
     assert items[0]["name"] == "半导体"
     assert items[0]["change_pct"] == 3.2
+
+
+# ---------- 金融计算 ----------
+def test_finance_compound():
+    r = finance_tools.compound(100000, 0.05, 10)
+    assert r["终值"] == 162889.46
+
+
+def test_finance_loan():
+    r = finance_tools.loan(1000000, 0.041, 30)
+    assert r["月供"] == 4831.98
+    assert r["总利息"] > 700000
+
+
+def test_finance_irr():
+    r = finance_tools.irr([-100000, 30000, 40000, 50000])
+    assert round(r["IRR百分比"], 2) == 8.90
+
+
+def test_agent_exposes_finance_tools():
+    names = {t["function"]["name"] for t in agent.LOCAL_TOOLS}
+    assert {"finance_calc", "stock_quote"} <= names

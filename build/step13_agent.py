@@ -10,6 +10,8 @@ import urllib.request
 from pathlib import Path
 
 import mcp_bridge
+import finance_tools
+import market
 import numpy_tool
 import web_tools
 import step9_vector as s9
@@ -47,8 +49,9 @@ MODEL = os.environ.get("LLM_MODEL", "deepseek-flash")
 _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 MODEL_V, CHUNKS = s9.load_vectors()
 
-SYSTEM = ("你是一个会使用工具的助手。需要查资料时调用 search_docs，"
-          "需要算数时调用 calculator。不要编造资料里没有的内容。")
+SYSTEM = ("你是一个会使用工具的金融助手。查合规资料用 search_docs，查行情用 stock_quote，"
+          "金融计算用 finance_calc（复利/贷款/NPV/IRR/CAGR/持仓盈亏）。"
+          "不要编造资料里没有的内容；不要给买卖建议。")
 
 LOCAL_TOOLS = [
     {"type": "function", "function": {
@@ -99,6 +102,26 @@ LOCAL_TOOLS = [
         "parameters": {"type": "object",
                        "properties": {"url": {"type": "string", "description": "http/https 链接"}},
                        "required": ["url"]}}},
+    {"type": "function", "function": {
+        "name": "finance_calc",
+        "description": "金融计算：复利、等额本息/本金贷款、NPV、IRR、CAGR、持仓盈亏",
+        "parameters": {"type": "object",
+                       "properties": {
+                           "kind": {"type": "string",
+                                    "enum": ["compound", "loan", "npv", "irr", "cagr", "position"]},
+                           "params": {"type": "object",
+                                      "description": "参数。compound: {principal, rate, years, times}; "
+                                                     "loan: {principal, rate, years, method}; "
+                                                     "npv/irr: {rate, cashflows}; "
+                                                     "cagr: {begin, end, years}; "
+                                                     "position: {cost, price, shares}"}},
+                       "required": ["kind", "params"]}}},
+    {"type": "function", "function": {
+        "name": "stock_quote",
+        "description": "查询 A 股实时行情：价格、涨跌幅、振幅、换手率、成交额",
+        "parameters": {"type": "object",
+                       "properties": {"symbol": {"type": "string", "description": "6 位代码，如 600519"}},
+                       "required": ["symbol"]}}},
 ]
 
 _OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
@@ -168,6 +191,15 @@ def execute(name, args, approve=None):
         if name == "fetch_url":
             page = web_tools.fetch(args["url"], max_chars=1500)
             return f"{page['title']}\n{page['text']}"
+        if name == "finance_calc":
+            return finance_tools.calculate(args["kind"], args.get("params") or {})
+        if name == "stock_quote":
+            quotes = market.fetch([args["symbol"]])
+            if not quotes:
+                return "没有查到该股票的行情"
+            q = quotes[0]
+            return (f"{q['name']}（{q['symbol']}）现价 {q['price']}，涨跌幅 {q['change_pct']:+.2f}%，"
+                    f"振幅 {q['amplitude']:.2f}%，换手率 {q['turnover']:.2f}%，成交额 {q['amount']:.0f} 万元")
         return f"错误：没有名为 {name} 的工具"
     except Exception as e:
         return f"工具执行失败：{type(e).__name__}: {e}"

@@ -1,6 +1,6 @@
 # ai-journey
 
-面向 AI 应用岗位的项目仓库：RAG 知识库问答 + Agent 工具调用 + MCP + 多知识库 + 金融合规 + 自选股监控。
+面向金融场景的 AI 助手：金融合规问答（RAG）+ 行情监控（K 线 / 板块 / 异动解读）+ 金融计算（Agent），附带 MCP 与多知识库能力。
 
 在线 Demo：https://earn-all-you-want.up.railway.app（访问口令 PCAI1907）
 

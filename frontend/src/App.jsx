@@ -5,16 +5,18 @@ import AgentView from './views/AgentView'
 import StatsView from './views/StatsView'
 import KnowledgeView from './views/KnowledgeView'
 import MonitorView from './views/MonitorView'
+import HomeView from './views/HomeView'
 
 export default function App() {
-  const [tab, setTab] = useState(() => window.location.hash.slice(1) || 'ask')
+  const [tab, setTab] = useState(() => window.location.hash.slice(1) || 'home')
   const [sessions, setSessions] = useState([])
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)
   const [hasToken, setHasToken] = useState(!!getToken())
   const [bootError, setBootError] = useState('')
   const [kbs, setKbs] = useState([])
-  const [kb, setKb] = useState('all')
+  const [kb, setKb] = useState('')
+  const [seedQuestion, setSeedQuestion] = useState('')
 
   const refresh = useCallback(async () => {
     const list = await listSessions()
@@ -25,7 +27,11 @@ export default function App() {
   // 启动：加载知识库列表
   useEffect(() => {
     listKbs()
-      .then((items) => setKbs(items))
+      .then((items) => {
+        setKbs(items)
+        // 金融优先：有金融合规库就默认选它
+        setKb((prev) => prev || (items.some((k) => k.id === '金融合规') ? '金融合规' : 'all'))
+      })
       .catch(() => {})
   }, [])
 
@@ -102,21 +108,24 @@ export default function App() {
       <header>
         <div className="brand">
           <img className="logo" src="/logo.svg" alt="logo" />
-          <h1>个人工作助手</h1>
-          <span className="tag">RAG + Agent</span>
+          <h1>金鉴 AI</h1>
+          <span className="tag">金融合规 · 行情 · 计算</span>
           <button className="token-btn" onClick={askToken}>
             {hasToken ? '口令已设置' : '设置口令'}
           </button>
         </div>
         <nav>
+          <button className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>
+            首页
+          </button>
           <button className={tab === 'ask' ? 'active' : ''} onClick={() => setTab('ask')}>
-            知识问答
+            合规问答
           </button>
           <button className={tab === 'kb' ? 'active' : ''} onClick={() => setTab('kb')}>
             知识库
           </button>
           <button className={tab === 'monitor' ? 'active' : ''} onClick={() => setTab('monitor')}>
-            监控
+            行情监控
           </button>
           <button className={tab === 'agent' ? 'active' : ''} onClick={() => setTab('agent')}>
             Agent 控制台
@@ -127,7 +136,9 @@ export default function App() {
         </nav>
       </header>
 
-      {tab === 'ask' ? (
+      {tab === 'home' ? (
+        <HomeView onNavigate={setTab} onAsk={(q) => { setSeedQuestion(q); setTab('ask') }} />
+      ) : tab === 'ask' ? (
         <div className="layout">
           <aside className="sidebar">
             <button className="new-session" onClick={newSession}>
@@ -162,6 +173,8 @@ export default function App() {
               kb={kb}
               kbs={kbs}
               onKbChange={setKb}
+              seedQuestion={seedQuestion}
+              onSeedUsed={() => setSeedQuestion('')}
               onChanged={refresh}
               onNeedSession={async () => {
                 const created = await createSession('新会话')

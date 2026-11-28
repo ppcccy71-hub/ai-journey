@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { askStream, getSession } from '../api'
 
-export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, onKbChange }) {
+export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, onKbChange, seedQuestion, onSeedUsed }) {
   const [messages, setMessages] = useState([])
   const [streaming, setStreaming] = useState('')
   const [sources, setSources] = useState([])
@@ -92,9 +92,9 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
         {messages.length === 0 && !streaming && (
           <div className="empty">
             <b>问点什么</b>
-            比如「RAG 有哪几个步骤？」「怎么声明请求体？」
+            比如「内幕信息知情人包括哪些人？」「定期报告包括哪些？」
             <br />
-            回答会标注出处；资料里没有的会直接拒答。
+            回答会标注法规条款；资料里没有的会直接拒答，投资建议类问题不回答。
           </div>
         )}
 
@@ -185,6 +185,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
           </div>
           <div className="meta">{meta}</div>
         </div>
+        <div className="disclaimer">内容仅供信息参考，不构成投资建议。</div>
         <div className="input-row">
           <input
             ref={boxRef}
