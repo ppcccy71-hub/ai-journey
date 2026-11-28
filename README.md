@@ -4,6 +4,8 @@
 
 在线 Demo：https://earn-all-you-want.up.railway.app（访问口令 PCAI1907）
 
+![首页](docs/home-preview.png)
+
 ![CI](https://github.com/ppcccy71-hub/ai-journey/actions/workflows/ci.yml/badge.svg)
 
 ## 目录

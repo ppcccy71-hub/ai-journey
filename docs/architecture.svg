@@ -17,7 +17,7 @@
   <rect width="980" height="620" fill="#f1f5f9"/>
 
   <text x="40" y="42" class="title" font-size="19">个人工作助手 · 架构</text>
-  <text x="40" y="64" class="muted">RAG 知识问答 + 工具调用 Agent + 会话与用量统计，单端口部署</text>
+  <text x="40" y="64" class="muted">金融合规问答 + 行情监控 + 金融计算 Agent，单端口部署</text>
 
   <!-- 前端 -->
   <rect x="40" y="96" width="200" height="150" class="box"/>
