@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import { listKbs, listWatch, getSectors, getMonitorStatus } from '../api'
+
 const FEATURES = [
   {
     key: 'ask',
@@ -29,14 +32,49 @@ const QUESTIONS = [
   '证券公司违反适当性义务会被怎么处理？',
 ]
 
-const STATS = [
-  ['3', '个知识库'],
-  ['351', '块法规'],
-  ['6', '类金融计算'],
-  ['21', '个测试'],
-]
+function fmtPct(v) {
+  if (v == null) return '-'
+  return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
+}
 
 export default function HomeView({ onNavigate, onAsk }) {
+  const [live, setLive] = useState(null)
+  const [liveError, setLiveError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    Promise.all([listKbs(), getSectors(3), listWatch(), getMonitorStatus()])
+      .then(([kbs, sectors, watch, status]) => {
+        if (!alive) return
+        const finance = (kbs || []).find((k) => k.id === '金融合规')
+        const movers = (watch || [])
+          .filter((w) => w.quote)
+          .sort((a, b) => b.quote.change_pct - a.quote.change_pct)
+        setLive({
+          finance,
+          topSector: (sectors || [])[0] || null,
+          watchCount: (watch || []).length,
+          topMover: movers[0] || null,
+          alerts: status?.alerts_today ?? 0,
+          trading: !!status?.trading_hours,
+        })
+      })
+      .catch((err) => alive && setLiveError(err.message))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const status = {
+    ask: live?.finance
+      ? `${live.finance.chunk_count} 块法规 · 15/15`
+      : '351 块法规 · 15/15',
+    monitor: live?.topSector
+      ? `自选 ${live.watchCount} 只 · ${live.topSector.name} ${fmtPct(live.topSector.change_pct)}`
+      : 'K 线 · 板块 · 异动解读',
+    agent: '6 类计算 · 21 个测试',
+  }
+
   return (
     <div className="page home">
       <section className="card home-hero">
@@ -47,6 +85,25 @@ export default function HomeView({ onNavigate, onAsk }) {
           <p className="home-desc">
             面向金融场景的 AI 助手：法规问题给出条款依据，行情异动给出模型解读，金融计算直接算给你看。
           </p>
+          {live && (
+            <div className="home-live">
+              <span className={live.trading ? 'live-dot on' : 'live-dot'} />
+              {live.trading ? '交易时段' : '非交易时段'} · 自选 {live.watchCount} 只 · 今日告警{' '}
+              {live.alerts} 条
+              {live.topMover?.quote && (
+                <>
+                  {' '}
+                  · {live.topMover.name}{' '}
+                  <b className={live.topMover.quote.change_pct >= 0 ? 'up' : 'down'}>
+                    {fmtPct(live.topMover.quote.change_pct)}
+                  </b>
+                </>
+              )}
+            </div>
+          )}
+          {liveError && !live && (
+            <div className="home-live muted">设置访问口令后显示实时数据</div>
+          )}
           <div className="home-actions">
             <button className="home-cta" onClick={() => onNavigate('ask')}>
               开始提问
@@ -64,6 +121,7 @@ export default function HomeView({ onNavigate, onAsk }) {
             <div className="home-card-tag">{f.tag}</div>
             <h3>{f.title}</h3>
             <p>{f.desc}</p>
+            <div className="home-card-status">{status[f.key]}</div>
             <span className="home-card-action">{f.action}</span>
           </div>
         ))}
@@ -81,7 +139,12 @@ export default function HomeView({ onNavigate, onAsk }) {
       </section>
 
       <div className="home-stats">
-        {STATS.map(([num, label]) => (
+        {[
+          [String(live?.finance?.chunk_count ?? 351), '块法规'],
+          [live ? String(live.watchCount) : '—', '只自选股'],
+          [live ? String(live.alerts) : '—', '今日告警'],
+          ['21', '个测试'],
+        ].map(([num, label]) => (
           <div key={label} className="home-stat">
             <b>{num}</b>
             <span>{label}</span>
