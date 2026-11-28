@@ -13,6 +13,8 @@ import store
 
 SECRET = os.environ.get("AUTH_SECRET") or os.environ.get("ACCESS_TOKEN") or "dev-secret-change-me"
 TOKEN_TTL = 7 * 86400
+ADMIN_USER = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASS = os.environ.get("ADMIN_PASSWORD") or os.environ.get("ACCESS_TOKEN") or "admin123456"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -27,6 +29,24 @@ CREATE TABLE IF NOT EXISTS users (
 def init():
     with store.connect() as conn:
         conn.executescript(SCHEMA)
+    ensure_admin()
+
+
+def ensure_admin():
+    """内置管理员：id=0，能直接看到历史数据（早期数据都是 user_id=0）。"""
+    with store.connect() as conn:
+        row = conn.execute("SELECT id FROM users WHERE username=?", (ADMIN_USER,)).fetchone()
+        if row:
+            # 显式配置了 ADMIN_PASSWORD 就以环境变量为准，方便重置
+            if os.environ.get("ADMIN_PASSWORD"):
+                conn.execute("UPDATE users SET password_hash=? WHERE id=?",
+                             (_hash(ADMIN_PASS), row[0]))
+                return {"id": row[0], "username": ADMIN_USER, "created": False, "updated": True}
+            return {"id": row[0], "username": ADMIN_USER, "created": False}
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash, created_at) VALUES(0,?,?,?)",
+            (ADMIN_USER, _hash(ADMIN_PASS), time.time()))
+    return {"id": 0, "username": ADMIN_USER, "created": True}
 
 
 def _hash(password, salt=None):

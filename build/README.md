@@ -192,6 +192,7 @@ ALERT_WEBHOOK_TYPE=auto   # auto / feishu / dingtalk / generic
 - 注册 / 登录：用户名 + 密码（PBKDF2-SHA256，12 万轮），签发 HMAC token（7 天）
 - 隔离范围：会话、消息、用量统计、自选股、告警、今日综述
 - 共享范围：知识库（金融合规/技术文档是公共资料）
+- 内置管理员：用户名 `admin`，密码取 `ADMIN_PASSWORD`，不填则用 `ACCESS_TOKEN`（当前 Demo 为 `PCAI1907`）
 - 兼容原有访问口令：登录页点「用访问口令登录」，或请求头带 `X-Access-Token`
 - 管理接口（知识库增删、推送测试）目前所有登录用户可用，生产应加角色
 

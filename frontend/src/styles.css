@@ -611,3 +611,5 @@ nav button.active {
   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .login-error { color: #d93025; font-size: 12px; }
 .user-chip { font-size: 12px; color: #4b5563; margin-right: 6px; }
+
+.demo-hint { font-size: 11px; color: #9aa1ad; margin-top: 2px; }

@@ -2,10 +2,14 @@
 """核心逻辑的单元测试 + API 冒烟测试（不调用外部模型）。"""
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("ACCESS_TOKEN", "")
+_TMP = tempfile.mkdtemp(prefix="dsh-test-")
+os.environ.setdefault("ASSISTANT_DB", str(Path(_TMP) / "test.db"))
+os.environ.setdefault("KB_DIR", str(Path(_TMP) / "kbs"))
 os.environ.setdefault("ENABLE_MONITOR", "0")
 
 import pytest
@@ -293,3 +297,11 @@ def test_send_text_skips_in_quiet(monkeypatch):
     result = notify.send_text("test")
     assert result["sent"] is False
     assert result["reason"] == "免打扰时段"
+
+
+def test_builtin_admin(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "DB", tmp_path / "admin.db")
+    monkeypatch.setattr(auth, "ADMIN_PASS", "adminpass123")
+    auth.init()
+    assert auth.login("admin", "adminpass123")["id"] == 0
+    assert auth.ensure_admin()["created"] is False

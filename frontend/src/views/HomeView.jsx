@@ -96,7 +96,7 @@ export default function HomeView({ onNavigate, onAsk }) {
     monitor: live?.topSector
       ? `自选 ${live.watchCount} 只 · ${live.topSector.name} ${fmtPct(live.topSector.change_pct)}`
       : 'K 线 · 板块 · 异动解读',
-    agent: '6 类计算 · 32 个测试',
+    agent: '6 类计算 · 33 个测试',
   }
 
   return (
@@ -199,7 +199,7 @@ export default function HomeView({ onNavigate, onAsk }) {
           [String(live?.finance?.chunk_count ?? 351), '块法规'],
           [live ? String(live.watchCount) : '—', '只自选股'],
           [live ? String(live.alerts) : '—', '今日告警'],
-          ['32', '个测试'],
+          ['33', '个测试'],
         ].map(([num, label]) => (
           <div key={label} className="home-stat">
             <b>{num}</b>

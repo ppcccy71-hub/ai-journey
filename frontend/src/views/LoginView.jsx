@@ -54,6 +54,7 @@ export default function LoginView({ onDone }) {
           {busy ? '请稍候……' : mode === 'login' ? '登录' : '注册并登录'}
         </button>
         <button className="login-link" onClick={tokenLogin}>用访问口令登录</button>
+        <div className="demo-hint">演示管理员：admin，密码见 README</div>
       </div>
     </div>
   )
