@@ -43,9 +43,22 @@ def _text_of(raw: bytes, content_type: str) -> str:
     return raw.decode("utf-8", "ignore")
 
 
+BLOCK_TAGS = re.compile(r"(?is)<(nav|header|footer|aside|form|button|iframe)[^>]*>.*?</\1>")
+
+
+def main_html(page: str) -> str:
+    """优先取正文区域，避免把导航栏当成内容。"""
+    for tag in ("main", "article"):
+        m = re.search(rf"(?is)<{tag}[^>]*>(.*?)</{tag}>", page)
+        if m and len(m.group(1)) > 400:
+            return m.group(1)
+    return page
+
+
 def html_to_text(page: str, max_chars=2000) -> str:
     page = re.sub(r"(?is)<(script|style|noscript|svg)[^>]*>.*?</\1>", " ", page)
     page = re.sub(r"(?is)<!--.*?-->", " ", page)
+    page = BLOCK_TAGS.sub(" ", page)
     page = re.sub(r"(?is)<[^>]+>", " ", page)
     page = htmllib.unescape(page)
     page = re.sub(r"[ \t\u3000\xa0]+", " ", page)
@@ -80,7 +93,11 @@ def fetch(url: str, max_chars=2000) -> dict:
         raw = resp.read(MAX_BYTES)
         final = resp.geturl()
     page = _text_of(raw, ctype)
-    return {"url": final, "title": page_title(page)[:80], "text": html_to_text(page, max_chars)}
+    body = main_html(page)
+    text = html_to_text(body, max_chars)
+    if len(text) < 300:          # 正文太短就退回整页
+        text = html_to_text(page, max_chars)
+    return {"url": final, "title": page_title(page)[:80], "text": text}
 
 
 def _decode_ddg(href: str) -> str:
@@ -161,7 +178,7 @@ def search(query: str, limit=5):
     return []
 
 
-def web_chunks(query: str, max_pages=2, max_chars=1800):
+def web_chunks(query: str, max_pages=3, max_chars=2500):
     """搜索并抓取正文，转成和本地知识库一致的 chunk 结构。"""
     results = search(query, limit=max(3, max_pages))
     chunks = []
