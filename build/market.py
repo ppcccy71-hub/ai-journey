@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """A 股行情：腾讯接口，免 key，1 次可查多只。"""
+import json
 import urllib.request
 
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 URL = "https://qt.gtimg.cn/q="
+KLINE_URL = "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
+EASTMONEY = "https://push2.eastmoney.com/api/qt/clist/get"
 
 
 def normalize(symbol: str) -> str:
@@ -60,3 +63,65 @@ def fetch(symbols):
         return []
     raw = OPENER.open(URL + ",".join(codes), timeout=15).read().decode("gbk")
     return parse(raw)
+
+
+def _get_json(url, referer="https://quote.eastmoney.com/"):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120",
+        "Referer": referer,
+    })
+    return json.loads(OPENER.open(req, timeout=20).read().decode("utf-8", "ignore"))
+
+
+def kline(symbol: str, period: str = "day", count: int = 120):
+    """日/周/月 K 线，前复权。返回 [{date, open, close, high, low, volume}]。"""
+    code = normalize(symbol)
+    if period not in ("day", "week", "month"):
+        raise ValueError("period 只支持 day/week/month")
+    url = f"{KLINE_URL}?param={code},{period},,,{max(20, min(count, 300))},qfq"
+    data = _get_json(url, "https://gu.qq.com/").get("data", {}).get(code, {})
+    raw = data.get(f"qfq{period}") or data.get(period) or []
+    bars = []
+    for row in raw:
+        if len(row) < 6:
+            continue
+        try:
+            bars.append({"date": row[0], "open": float(row[1]), "close": float(row[2]),
+                         "high": float(row[3]), "low": float(row[4]), "volume": float(row[5])})
+        except (TypeError, ValueError):
+            continue
+    return bars
+
+
+def sectors(limit: int = 16):
+    """行业板块涨幅榜。"""
+    fields = "f12,f14,f3,f104,f105,f128,f140"
+    url = (f"{EASTMONEY}?pn=1&pz={max(5, min(limit, 50))}&po=1&np=1&fltt=2&invt=2"
+           f"&fid=f3&fs=m:90+t:2&fields={fields}")
+    diff = (_get_json(url).get("data") or {}).get("diff") or []
+    out = []
+    for d in diff:
+        try:
+            out.append({"code": d.get("f12", ""), "name": d.get("f14", ""),
+                        "change_pct": float(d.get("f3") or 0),
+                        "up": int(d.get("f104") or 0), "down": int(d.get("f105") or 0),
+                        "leader": d.get("f128", ""), "leader_code": d.get("f140", "")})
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
+def sector_stocks(code: str, limit: int = 10):
+    """板块内个股涨幅榜。"""
+    fields = "f2,f3,f12,f14"
+    url = (f"{EASTMONEY}?pn=1&pz={max(3, min(limit, 30))}&po=1&np=1&fltt=2&invt=2"
+           f"&fid=f3&fs=b:{code}&fields={fields}")
+    diff = (_get_json(url).get("data") or {}).get("diff") or []
+    out = []
+    for d in diff:
+        try:
+            out.append({"code": d.get("f12", ""), "name": d.get("f14", ""),
+                        "price": float(d.get("f2") or 0), "change_pct": float(d.get("f3") or 0)})
+        except (TypeError, ValueError):
+            continue
+    return out

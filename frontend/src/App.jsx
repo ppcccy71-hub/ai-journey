@@ -7,7 +7,7 @@ import KnowledgeView from './views/KnowledgeView'
 import MonitorView from './views/MonitorView'
 
 export default function App() {
-  const [tab, setTab] = useState('ask')
+  const [tab, setTab] = useState(() => window.location.hash.slice(1) || 'ask')
   const [sessions, setSessions] = useState([])
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)

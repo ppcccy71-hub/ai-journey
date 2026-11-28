@@ -501,3 +501,26 @@ nav button.active {
 .alert-analysis { margin-top: 6px; font-size: 12.5px; color: #4b5563; line-height: 1.7; }
 
 .chip a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+.monitor-grid { display: grid; grid-template-columns: 1.7fr 1fr; gap: 16px; align-items: start; }
+@media (max-width: 980px) { .monitor-grid { grid-template-columns: 1fr; } }
+.kline { width: 100%; height: auto; display: block; }
+.kline text { font-size: 10px; fill: #9aa1ad; }
+.quote-table tr.selected td { background: #f2f4ff; }
+.quote-table tbody tr { cursor: pointer; }
+.period-switch { display: inline-flex; gap: 4px; margin-left: 10px; }
+.period-switch button { border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  font-size: 11.5px; padding: 2px 10px; cursor: pointer; color: #6b7280; }
+.period-switch button.on { background: #eef1ff; border-color: #c7d0ff; color: #3b5bdb; }
+.sector-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow: auto; }
+.sector-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12.5px; }
+.sector-item:hover, .sector-item.on { background: #f2f4ff; }
+.sector-item .name { flex: 1; }
+.sector-item .up { color: #d93025; }
+.sector-item .down { color: #188038; }
+.sector-leader { color: #9aa1ad; font-size: 11px; }
+.sector-stocks { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.sector-stocks .title { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
+.kline-head { display: flex; align-items: center; gap: 8px; }
+.kline-head b { font-size: 14px; }
+.kline-head .price { font-size: 12px; color: #9aa1ad; }

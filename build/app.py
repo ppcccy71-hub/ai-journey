@@ -444,6 +444,28 @@ def remove_watch(symbol: str, request: Request):
     return {"ok": True}
 
 
+@app.get("/kline")
+def get_kline(request: Request, symbol: str, period: str = "day", count: int = 120):
+    guard(request)
+    try:
+        bars = market.kline(symbol, period, count)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    return {"symbol": symbol, "period": period, "bars": bars}
+
+
+@app.get("/sectors")
+def get_sectors(request: Request, limit: int = 16):
+    guard(request)
+    return {"items": market.sectors(limit)}
+
+
+@app.get("/sectors/{code}/stocks")
+def get_sector_stocks(code: str, request: Request, limit: int = 10):
+    guard(request)
+    return {"code": code, "items": market.sector_stocks(code, limit)}
+
+
 @app.get("/alerts")
 def get_alerts(request: Request, limit: int = 50):
     guard(request)

@@ -208,3 +208,26 @@ export async function scanMonitor() {
 export async function getMonitorStatus() {
   return toJson(await fetch('/api/monitor/status', { headers: authHeaders() }))
 }
+
+
+// ---------- 行情图表 ----------
+export async function getKline(symbol, period = 'day', count = 120) {
+  const data = await toJson(
+    await fetch(`/api/kline?symbol=${symbol}&period=${period}&count=${count}`, {
+      headers: authHeaders(),
+    }),
+  )
+  return data.bars || []
+}
+
+export async function getSectors(limit = 16) {
+  const data = await toJson(await fetch(`/api/sectors?limit=${limit}`, { headers: authHeaders() }))
+  return data.items || []
+}
+
+export async function getSectorStocks(code, limit = 10) {
+  const data = await toJson(
+    await fetch(`/api/sectors/${code}/stocks?limit=${limit}`, { headers: authHeaders() }),
+  )
+  return data.items || []
+}

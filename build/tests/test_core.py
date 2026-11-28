@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import app as app_module
+import market
 import monitor
 import web_tools
 import kb_index
@@ -132,3 +133,25 @@ def test_html_to_text_strips_tags():
 
 def test_page_title():
     assert web_tools.page_title("<html><head><title>测试页</title></head></html>") == "测试页"
+
+
+# ---------- 行情解析 ----------
+def test_kline_parse(monkeypatch):
+    sample = {"data": {"sh600519": {"qfqday": [
+        ["2026-11-27", "1469.99", "1472.36", "1481.41", "1452.99", "39808"],
+    ]}}}
+    monkeypatch.setattr(market, "_get_json", lambda *a, **k: sample)
+    bars = market.kline("600519")
+    assert bars[0]["close"] == 1472.36
+    assert bars[0]["low"] == 1452.99
+
+
+def test_sectors_parse(monkeypatch):
+    sample = {"data": {"diff": [
+        {"f3": 3.2, "f12": "BK0001", "f14": "半导体", "f104": 10, "f105": 1,
+         "f128": "某股", "f140": "600000"},
+    ]}}
+    monkeypatch.setattr(market, "_get_json", lambda *a, **k: sample)
+    items = market.sectors(5)
+    assert items[0]["name"] == "半导体"
+    assert items[0]["change_pct"] == 3.2
