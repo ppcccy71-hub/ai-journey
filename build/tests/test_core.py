@@ -16,6 +16,7 @@ import app as app_module
 import brief
 import finance_tools
 import market
+import notify
 import monitor
 import web_tools
 import kb_index
@@ -213,3 +214,34 @@ def test_brief_skips_llm_without_watch(monkeypatch):
     data = brief.generate()
     assert "还没有自选股" in data["text"]
     assert calls["n"] == 0
+
+
+# ---------- 告警推送 ----------
+def test_notify_payload_feishu(monkeypatch):
+    monkeypatch.setattr(notify, "TYPE", "feishu")
+    body, kind = notify.payload({"name": "宁德时代", "symbol": "300750", "title": "涨幅 +5%",
+                                  "price": 215.89, "change_pct": 5.71, "analysis": "解读"})
+    assert kind == "feishu"
+    assert body["msg_type"] == "text"
+    assert "宁德时代" in body["content"]["text"]
+
+
+def test_notify_payload_dingtalk(monkeypatch):
+    monkeypatch.setattr(notify, "TYPE", "dingtalk")
+    body, kind = notify.payload({"name": "测试", "symbol": "000000", "title": "测试",
+                                  "price": 1.0, "change_pct": 3.0, "analysis": ""})
+    assert kind == "dingtalk"
+    assert "测试" in body["text"]["content"]
+
+
+def test_notify_auto_detect(monkeypatch):
+    monkeypatch.setattr(notify, "TYPE", "auto")
+    monkeypatch.setattr(notify, "URL", "https://open.feishu.cn/open-apis/bot/v2/hook/x")
+    assert notify.kind() == "feishu"
+    monkeypatch.setattr(notify, "URL", "https://oapi.dingtalk.com/robot/send?access_token=x")
+    assert notify.kind() == "dingtalk"
+
+
+def test_notify_unconfigured(monkeypatch):
+    monkeypatch.setattr(notify, "URL", "")
+    assert notify.send({"name": "x"})["sent"] is False

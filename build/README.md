@@ -22,6 +22,7 @@
 - **自选股监控**：自选股行情 + 日/周/月 K 线 + 行业板块涨幅榜与领涨个股；交易时段每 5 分钟轮询，规则触发后调用模型写解读并生成告警
 - **联网检索**：问答可选「联网」，先搜索再抓网页正文回答，来源显示为链接；Agent 新增 `web_search` / `fetch_url` 两个工具
 - **今日综述**：首页聚合板块/自选/告警，模型生成 120 字简报；10 分钟缓存，没有自选股时不调模型
+- **Webhook 推送**：新告警可推到飞书/钉钉/企微，自动识别平台；`/notify/test` 可先测通
 - **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
 
 ## 知识库
@@ -162,6 +163,23 @@ AGENT_WORKSPACE=/data/agent_workspace
 ![监控页](../docs/monitor-preview.png)
 
 行情接口免 key，但为非官方接口；页面明确标注「不构成投资建议」。
+
+## 告警推送
+
+新告警会 POST 到 `ALERT_WEBHOOK_URL`，自动识别平台：
+
+- 飞书：`{"msg_type":"text","content":{"text":"..."}}`
+- 钉钉 / 企微：`{"msgtype":"text","text":{"content":"..."}}`
+- 其他：通用 `{"text":"..."}`
+
+配置：
+
+```bash
+ALERT_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/xxx
+ALERT_WEBHOOK_TYPE=auto   # auto / feishu / dingtalk / generic
+```
+
+推送失败只记录结果，不影响告警入库；配好后可先 `POST /notify/test` 验证。
 
 ## 技术栈
 
@@ -315,6 +333,8 @@ python step8_embed.py
 | GET | `/sectors` | 行业板块涨幅榜 |
 | GET | `/sectors/{code}/stocks` | 板块领涨个股 |
 | GET | `/brief` | 首页今日综述（缓存 10 分钟） |
+| GET | `/notify/status` | Webhook 是否配置 |
+| POST | `/notify/test` | 发送一条测试推送 |
 
 `/ask` 与 `/ask/stream` 额外支持 `web: true`，开启联网检索。
 | GET | `/stats` | 汇总统计 |

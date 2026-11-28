@@ -22,6 +22,7 @@ import kb_index
 import kb_store
 import market
 import monitor
+import notify
 import watch_store
 import query_rewrite
 import rerank
@@ -502,6 +503,23 @@ def monitor_status(request: Request):
 def get_brief(request: Request, force: int = 0):
     guard(request)
     return brief.generate(force=bool(force))
+
+
+@app.get("/notify/status")
+def notify_status(request: Request):
+    guard(request)
+    return {"configured": bool(notify.URL), "type": notify.kind() if notify.URL else None}
+
+
+@app.post("/notify/test")
+def notify_test(request: Request):
+    guard(request)
+    result = notify.send({
+        "name": "测试股票", "symbol": "000000", "title": "测试告警",
+        "price": 10.0, "change_pct": 3.5,
+        "analysis": "这是一条测试推送，收到即表示 Webhook 配置正确。",
+    })
+    return result
 
 
 @app.get("/metrics")

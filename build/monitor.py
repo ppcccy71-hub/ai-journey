@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 import llm
 import market
+import notify
 import watch_store
 
 CN = ZoneInfo("Asia/Shanghai")
@@ -82,9 +83,14 @@ def scan():
             if now - watch_store.last_alert_at(q["symbol"], rule["key"]) < COOLDOWN:
                 continue
             analysis = analyze(q, rule["label"])
-            watch_store.add_alert(q["symbol"], q["name"], rule["key"],
-                                  rule["title"](q), q["price"], q["change_pct"], analysis)
+            alert_id = watch_store.add_alert(q["symbol"], q["name"], rule["key"],
+                                             rule["title"](q), q["price"], q["change_pct"], analysis)
             created += 1
+            notify.send({
+                "id": alert_id, "symbol": q["symbol"], "name": q["name"],
+                "title": rule["title"](q), "price": q["price"],
+                "change_pct": q["change_pct"], "analysis": analysis,
+            })
     STATE["last_scan"] = time.time()
     STATE["last_count"] = created
     return created

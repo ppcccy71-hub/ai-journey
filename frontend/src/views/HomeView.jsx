@@ -47,6 +47,7 @@ export default function HomeView({ onNavigate, onAsk }) {
   const [liveError, setLiveError] = useState('')
   const [brief, setBrief] = useState(null)
   const [briefLoading, setBriefLoading] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -95,7 +96,7 @@ export default function HomeView({ onNavigate, onAsk }) {
     monitor: live?.topSector
       ? `自选 ${live.watchCount} 只 · ${live.topSector.name} ${fmtPct(live.topSector.change_pct)}`
       : 'K 线 · 板块 · 异动解读',
-    agent: '6 类计算 · 23 个测试',
+    agent: '6 类计算 · 27 个测试',
   }
 
   return (
@@ -128,10 +129,21 @@ export default function HomeView({ onNavigate, onAsk }) {
             <div className="home-live muted">设置访问口令后显示实时数据</div>
           )}
           {live?.latestAlert && (
-            <button className="home-alert" onClick={() => onNavigate('monitor')}>
-              <span className="alert-dot" /> 最新告警 · {live.latestAlert.name}{' '}
-              {live.latestAlert.title} · {fmtTime(live.latestAlert.created_at)}
-            </button>
+            <>
+              <button className="home-alert" onClick={() => setShowAlert((v) => !v)}>
+                <span className="alert-dot" /> 最新告警 · {live.latestAlert.name}{' '}
+                {live.latestAlert.title} · {fmtTime(live.latestAlert.created_at)}
+                <span className="alert-toggle">{showAlert ? '收起' : '详情'}</span>
+              </button>
+              {showAlert && (
+                <div className="home-alert-detail">
+                  <p>{live.latestAlert.analysis || '这条告警没有解读。'}</p>
+                  <button className="alert-link" onClick={() => onNavigate('monitor')}>
+                    去监控页 →
+                  </button>
+                </div>
+              )}
+            </>
           )}
           <div className="home-actions">
             <button className="home-cta" onClick={() => onNavigate('ask')}>
@@ -187,7 +199,7 @@ export default function HomeView({ onNavigate, onAsk }) {
           [String(live?.finance?.chunk_count ?? 351), '块法规'],
           [live ? String(live.watchCount) : '—', '只自选股'],
           [live ? String(live.alerts) : '—', '今日告警'],
-          ['23', '个测试'],
+          ['27', '个测试'],
         ].map(([num, label]) => (
           <div key={label} className="home-stat">
             <b>{num}</b>
