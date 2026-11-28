@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listKbs, listWatch, getSectors, getMonitorStatus } from '../api'
+import { listKbs, listWatch, getSectors, getMonitorStatus, listAlerts } from '../api'
 
 const FEATURES = [
   {
@@ -32,6 +32,11 @@ const QUESTIONS = [
   '证券公司违反适当性义务会被怎么处理？',
 ]
 
+function fmtTime(ts) {
+  if (!ts) return ''
+  return new Date(ts * 1000).toLocaleTimeString('zh-CN', { hour12: false })
+}
+
 function fmtPct(v) {
   if (v == null) return '-'
   return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`
@@ -43,8 +48,8 @@ export default function HomeView({ onNavigate, onAsk }) {
 
   useEffect(() => {
     let alive = true
-    Promise.all([listKbs(), getSectors(3), listWatch(), getMonitorStatus()])
-      .then(([kbs, sectors, watch, status]) => {
+    Promise.all([listKbs(), getSectors(3), listWatch(), getMonitorStatus(), listAlerts(1)])
+      .then(([kbs, sectors, watch, status, alerts]) => {
         if (!alive) return
         const finance = (kbs || []).find((k) => k.id === '金融合规')
         const movers = (watch || [])
@@ -56,6 +61,7 @@ export default function HomeView({ onNavigate, onAsk }) {
           watchCount: (watch || []).length,
           topMover: movers[0] || null,
           alerts: status?.alerts_today ?? 0,
+          latestAlert: (alerts || [])[0] || null,
           trading: !!status?.trading_hours,
         })
       })
@@ -103,6 +109,12 @@ export default function HomeView({ onNavigate, onAsk }) {
           )}
           {liveError && !live && (
             <div className="home-live muted">设置访问口令后显示实时数据</div>
+          )}
+          {live?.latestAlert && (
+            <button className="home-alert" onClick={() => onNavigate('monitor')}>
+              <span className="alert-dot" /> 最新告警 · {live.latestAlert.name}{' '}
+              {live.latestAlert.title} · {fmtTime(live.latestAlert.created_at)}
+            </button>
           )}
           <div className="home-actions">
             <button className="home-cta" onClick={() => onNavigate('ask')}>
