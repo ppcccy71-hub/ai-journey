@@ -17,6 +17,7 @@ import step13_agent as agent
 import web_tools
 import store
 import agent_runs
+import auth
 import brief
 import kb_index
 import kb_store
@@ -65,6 +66,7 @@ async def strip_api_prefix(request, call_next):
 
 MODEL_V, CHUNKS = s9.load_vectors()
 kb_store.init()
+auth.init()
 kb_index.ensure_default()
 monitor.start()
 brief.start()
@@ -77,11 +79,8 @@ RATE_LIMIT_PER_MIN = int(os.environ.get("RATE_LIMIT_PER_MIN", "20"))
 _HITS = defaultdict(deque)
 
 
-def guard(request: Request):
-    """口令 + 每 IP 每分钟限流。公开部署时防止 key 被刷。"""
-    if ACCESS_TOKEN and request.headers.get("x-access-token") != ACCESS_TOKEN:
-        raise HTTPException(401, "需要访问口令（X-Access-Token）")
-    # 云平台走反向代理，优先取 X-Forwarded-For 的第一个地址，否则所有人共用一个桶
+def rate_limit(request: Request):
+    """按 IP 每分钟限流。"""
     forwarded = request.headers.get("x-forwarded-for") or ""
     ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
     now = time.time()
@@ -90,7 +89,15 @@ def guard(request: Request):
         q.popleft()
     if len(q) >= RATE_LIMIT_PER_MIN:
         raise HTTPException(429, "请求过于频繁，请稍后再试")
-    q.append(now)          # 启动时加载一次
+    q.append(now)
+
+
+def guard(request: Request):
+    """登录校验（Bearer token 或访问口令）+ 每 IP 每分钟限流。"""
+    user = auth.current_user(request, ACCESS_TOKEN)
+    request.state.user = user
+    rate_limit(request)
+    return user
 
 
 # ============================================================
@@ -132,7 +139,7 @@ def has_cjk(text: str) -> bool:
     return any("\u4e00" <= ch <= "\u9fff" for ch in text)
 
 
-def search(req: AskRequest):
+def search(req: AskRequest, user_id=0):
     """检索：多轮改写 → 向量召回 10 条 → rerank 取 top_k。
 
     拒答阈值用召回阶段的余弦最高分，不能被 rerank 的排序分替代。
@@ -146,7 +153,7 @@ def search(req: AskRequest):
             hits = [(1.0 - i * 0.01, c) for i, c in enumerate(chunks)]
             return hits[: req.top_k], 1.0
 
-    history = history_of(req.session_id) if ENABLE_REWRITE else []
+    history = history_of(req.session_id, user_id) if ENABLE_REWRITE else []
     query = query_rewrite.rewrite(history, req.question) if history else req.question
 
     if req.mode == "quality" and not ENABLE_RERANK:
@@ -156,19 +163,19 @@ def search(req: AskRequest):
     return kb_index.search(req.kb, query, req.top_k, req_mode, has_cjk(query))
 
 
-def history_of(sid, limit=6):
-    """取该会话最近几条消息，作为多轮上下文。"""
-    if not sid:
+def history_of(sid, user_id=0, limit=6):
+    """取该会话最近几条消息；不是自己的会话一律当没有历史。"""
+    if not sid or not store.owns_session(sid, user_id):
         return []
     msgs = store.get_messages(sid, limit=200)[-limit:]
     return [{"role": m["role"], "content": m["content"]} for m in msgs]
 
 
-def messages_of(req: AskRequest, hits):
+def messages_of(req: AskRequest, hits, user_id=0):
     ctx = "\n\n".join(f"[{i}] 来源：{c['source']}\n{c['text']}"
                       for i, (_, c) in enumerate(hits, 1))
     return ([{"role": "system", "content": SYSTEM}]
-            + history_of(req.session_id)
+            + history_of(req.session_id, user_id)
             + [{"role": "user", "content": f"资料：\n{ctx}\n\n问题：{req.question}\n\n请依据资料回答并标注 [编号]。"}])
 
 
@@ -181,31 +188,67 @@ def sse(obj):
     return "data: " + json.dumps(obj, ensure_ascii=False) + "\n\n"
 
 
+class AuthRequest(BaseModel):
+    username: str = Field(..., min_length=2, max_length=20)
+    password: str = Field(..., min_length=6, max_length=72)
+
+
+# ============================================================
+# 注册 / 登录
+# ============================================================
+@app.post("/auth/register")
+def auth_register(req: AuthRequest, request: Request):
+    rate_limit(request)
+    try:
+        user = auth.register(req.username, req.password)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    return {"token": auth.create_token(user), "user": user}
+
+
+@app.post("/auth/login")
+def auth_login(req: AuthRequest, request: Request):
+    rate_limit(request)
+    try:
+        user = auth.login(req.username, req.password)
+    except ValueError as exc:
+        raise HTTPException(401, str(exc))
+    return {"token": auth.create_token(user), "user": user}
+
+
+@app.get("/auth/me")
+def auth_me(request: Request):
+    return guard(request)
+
+
 # ============================================================
 # 会话
 # ============================================================
 @app.post("/sessions")
-def create_session(req: SessionCreate):
-    sid = store.new_session(req.title)
+def create_session(req: SessionCreate, request: Request):
+    user = guard(request)
+    sid = store.new_session(req.title, user["id"])
     return {"id": sid, "title": req.title}
 
 
 @app.get("/sessions")
-def sessions():
-    return {"sessions": store.list_sessions()}
+def sessions(request: Request):
+    user = guard(request)
+    return {"sessions": store.list_sessions(user_id=user["id"])}
 
 
 @app.get("/sessions/{sid}")
-def session_detail(sid: str):
-    msgs = store.get_messages(sid)
-    if not msgs and not any(s["id"] == sid for s in store.list_sessions(limit=200)):
+def session_detail(sid: str, request: Request):
+    user = guard(request)
+    if not store.owns_session(sid, user["id"]):
         raise HTTPException(status_code=404, detail="会话不存在")
-    return {"session_id": sid, "messages": msgs}
+    return {"session_id": sid, "messages": store.get_messages(sid)}
 
 
 @app.delete("/sessions/{sid}")
-def remove_session(sid: str):
-    if not store.delete_session(sid):
+def remove_session(sid: str, request: Request):
+    user = guard(request)
+    if not store.delete_session(sid, user["id"]):
         raise HTTPException(status_code=404, detail="会话不存在")
     return {"deleted": True, "session_id": sid}
 
@@ -224,24 +267,26 @@ def health():
 
 @app.post("/ask")
 def ask(req: AskRequest, request: Request):
-    guard(request)
+    user = guard(request)
+    if req.session_id and not store.owns_session(req.session_id, user["id"]):
+        raise HTTPException(403, "无权访问该会话")
     t0 = time.perf_counter()
-    hits, best = search(req)
+    hits, best = search(req, user["id"])
 
     if best < req.min_score:
         answer, usage = "资料中没有相关信息。", {}
     else:
-        answer, usage = llm.stream_chat(messages_of(req, hits), temperature=0.2, max_tokens=400)
+        answer, usage = llm.stream_chat(messages_of(req, hits, user["id"]), temperature=0.2, max_tokens=400)
 
     latency = int((time.perf_counter() - t0) * 1000)
     if req.session_id:
-        store.ensure_session(req.session_id)
+        store.ensure_session(req.session_id, user_id=user["id"])
         store.add_message(req.session_id, "user", req.question)
         store.add_message(req.session_id, "assistant", answer)
         store.log_usage(req.session_id, "ask",
                         (usage or {}).get("prompt_tokens", 0),
                         (usage or {}).get("completion_tokens", 0),
-                        llm.cost(usage), latency)
+                        llm.cost(usage), latency, user_id=user["id"])
 
     return {"answer": answer, "refused": best < req.min_score, "best": round(best, 3),
             "sources": [] if best < req.min_score else sources_of(hits),
@@ -250,15 +295,18 @@ def ask(req: AskRequest, request: Request):
 
 @app.post("/ask/stream")
 def ask_stream(req: AskRequest, request: Request):
-    guard(request)
-    hits, best = search(req)
+    user = guard(request)
+    uid = user["id"]
+    if req.session_id and not store.owns_session(req.session_id, uid):
+        raise HTTPException(403, "无权访问该会话")
+    hits, best = search(req, uid)
 
     def gen():
         if best < req.min_score:
             yield sse({"type": "sources", "sources": []})
             yield sse({"type": "refused", "text": "资料中没有相关信息。"})
             if req.session_id:
-                store.ensure_session(req.session_id)
+                store.ensure_session(req.session_id, user_id=uid)
                 store.add_message(req.session_id, "user", req.question)
                 store.add_message(req.session_id, "assistant", "资料中没有相关信息。")
             yield "data: [DONE]\n\n"
@@ -267,7 +315,7 @@ def ask_stream(req: AskRequest, request: Request):
         yield sse({"type": "sources", "sources": sources_of(hits)})
         holder, parts = {}, []
         t0 = time.perf_counter()
-        for piece in llm.iter_chat(messages_of(req, hits), temperature=0.2,
+        for piece in llm.iter_chat(messages_of(req, hits, uid), temperature=0.2,
                                    max_tokens=400, usage_holder=holder):
             parts.append(piece)
             yield sse({"type": "delta", "text": piece})
@@ -275,12 +323,12 @@ def ask_stream(req: AskRequest, request: Request):
         usage = holder.get("usage") or {}
         latency = int((time.perf_counter() - t0) * 1000)
         if req.session_id:
-            store.ensure_session(req.session_id)
+            store.ensure_session(req.session_id, user_id=uid)
             store.add_message(req.session_id, "user", req.question)
             store.add_message(req.session_id, "assistant", "".join(parts))
             store.log_usage(req.session_id, "ask",
                             usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0),
-                            llm.cost(usage), latency)
+                            llm.cost(usage), latency, user_id=uid)
 
         yield sse({"type": "done", "usage": usage, "cost": round(llm.cost(usage), 8),
                    "latency_ms": latency})
@@ -294,7 +342,7 @@ def ask_stream(req: AskRequest, request: Request):
 # ============================================================
 @app.post("/agent/run")
 def agent_run(req: AgentRequest, request: Request):
-    guard(request)
+    user = guard(request)
     t0 = time.perf_counter()
     trace = []
     try:
@@ -302,7 +350,7 @@ def agent_run(req: AgentRequest, request: Request):
     except Exception as e:
         answer = f"[异常] {type(e).__name__}: {e}"
     latency = int((time.perf_counter() - t0) * 1000)
-    store.log_usage(None, "agent", 0, 0, 0.0, latency)
+    store.log_usage(None, "agent", 0, 0, 0.0, latency, user_id=user["id"])
     files = sorted(p.name for p in agent.WORKSPACE.iterdir() if p.is_file())
     return {"answer": answer, "trace": trace, "files": files, "latency_ms": latency}
 
@@ -312,8 +360,10 @@ def agent_run(req: AgentRequest, request: Request):
 # ============================================================
 @app.post("/agent/stream")
 def agent_stream(req: AgentStreamRequest, request: Request):
-    guard(request)
+    user = guard(request)
     """SSE：实时推送工具调用轨迹，写文件前等待人工确认。"""
+    if req.session_id and not store.owns_session(req.session_id, user["id"]):
+        raise HTTPException(403, "无权访问该会话")
     run = agent_runs.start(req.task, req.session_id)
 
     def gen():
@@ -412,8 +462,8 @@ class WatchAdd(BaseModel):
 
 @app.get("/watchlist")
 def get_watchlist(request: Request):
-    guard(request)
-    items = watch_store.list_watch()
+    user = guard(request)
+    items = watch_store.list_watch(user["id"])
     if not items:
         return {"items": []}
     try:
@@ -426,7 +476,7 @@ def get_watchlist(request: Request):
 
 @app.post("/watchlist")
 def add_watch(req: WatchAdd, request: Request):
-    guard(request)
+    user = guard(request)
     try:
         symbol = market.normalize(req.symbol)
     except ValueError as exc:
@@ -437,14 +487,14 @@ def add_watch(req: WatchAdd, request: Request):
         name = found[0]["name"] if found else ""
     except Exception:
         pass
-    watch_store.add(symbol, name)
+    watch_store.add(symbol, name, user["id"])
     return {"symbol": symbol, "name": name}
 
 
 @app.delete("/watchlist/{symbol}")
 def remove_watch(symbol: str, request: Request):
-    guard(request)
-    watch_store.remove(symbol)
+    user = guard(request)
+    watch_store.remove(symbol, user["id"])
     return {"ok": True}
 
 
@@ -472,38 +522,38 @@ def get_sector_stocks(code: str, request: Request, limit: int = 10):
 
 @app.get("/alerts")
 def get_alerts(request: Request, limit: int = 50):
-    guard(request)
-    return {"items": watch_store.list_alerts(min(limit, 200))}
+    user = guard(request)
+    return {"items": watch_store.list_alerts(min(limit, 200), user["id"])}
 
 
 @app.post("/alerts/{alert_id}/ack")
 def ack_alert(alert_id: int, request: Request):
-    guard(request)
-    watch_store.ack(alert_id)
+    user = guard(request)
+    watch_store.ack(alert_id, user["id"])
     return {"ok": True}
 
 
 @app.post("/monitor/scan")
 def monitor_scan(request: Request):
-    guard(request)
-    created = monitor.scan()
+    user = guard(request)
+    created = monitor.scan(user["id"])
     return {"created": created, "last_scan": monitor.STATE["last_scan"]}
 
 
 @app.get("/monitor/status")
 def monitor_status(request: Request):
-    guard(request)
+    user = guard(request)
     return {"enabled": monitor.STATE["enabled"],
             "trading_hours": monitor.in_trading_hours(),
             "last_scan": monitor.STATE["last_scan"],
-            "watch_count": len(watch_store.list_watch()),
-            "alerts_today": watch_store.count_today()}
+            "watch_count": len(watch_store.list_watch(user["id"])),
+            "alerts_today": watch_store.count_today(user["id"])}
 
 
 @app.get("/brief")
 def get_brief(request: Request, force: int = 0):
-    guard(request)
-    return brief.generate(force=bool(force))
+    user = guard(request)
+    return brief.generate(force=bool(force), user_id=user["id"])
 
 
 @app.get("/notify/status")
@@ -526,8 +576,8 @@ def notify_test(request: Request):
 
 @app.post("/brief/push")
 def push_brief(request: Request):
-    guard(request)
-    return brief.push_daily(force=True)
+    user = guard(request)
+    return brief.push_daily(force=True, user_id=user["id"])
 
 
 @app.get("/metrics")
@@ -567,13 +617,15 @@ def metrics():
 
 
 @app.get("/stats")
-def stats():
-    return store.stats()
+def stats(request: Request):
+    user = guard(request)
+    return store.stats(user_id=user["id"])
 
 
 @app.get("/stats/daily")
-def stats_daily(days: int = 7):
-    return {"days": days, "items": store.daily_stats(days)}
+def stats_daily(request: Request, days: int = 7):
+    user = guard(request)
+    return {"days": days, "items": store.daily_stats(days, user_id=user["id"])}
 
 
 # 生产模式：托管前端构建产物（frontend/dist）。

@@ -1,22 +1,23 @@
 import { useEffect, useState, useCallback } from 'react'
-import { listSessions, createSession, deleteSession, getToken, setToken, listKbs } from './api'
+import { listSessions, createSession, deleteSession, getToken, setToken, listKbs, getMe, clearToken } from './api'
 import AskView from './views/AskView'
 import AgentView from './views/AgentView'
 import StatsView from './views/StatsView'
 import KnowledgeView from './views/KnowledgeView'
 import MonitorView from './views/MonitorView'
 import HomeView from './views/HomeView'
+import LoginView from './views/LoginView'
 
 export default function App() {
   const [tab, setTab] = useState(() => window.location.hash.slice(1) || 'home')
   const [sessions, setSessions] = useState([])
   const [currentId, setCurrentId] = useState(null)
   const [booting, setBooting] = useState(true)
-  const [hasToken, setHasToken] = useState(!!getToken())
-  const [bootError, setBootError] = useState('')
+  const [user, setUser] = useState(null)
   const [kbs, setKbs] = useState([])
   const [kb, setKb] = useState('')
   const [seedQuestion, setSeedQuestion] = useState('')
+  const [bootError, setBootError] = useState('')
 
   const refresh = useCallback(async () => {
     const list = await listSessions()
@@ -35,10 +36,16 @@ export default function App() {
       .catch(() => {})
   }, [])
 
-  // 启动：加载会话列表；一个都没有就自动建一个
+  // 启动：先校验登录，再加载会话；一个都没有就自动建一个
   useEffect(() => {
     ;(async () => {
+      if (!getToken()) {
+        setBooting(false)
+        return
+      }
       try {
+        const me = await getMe()
+        setUser(me)
         let list = await refresh()
         if (list.length === 0) {
           const created = await createSession('第一次对话')
@@ -48,20 +55,13 @@ export default function App() {
           setCurrentId(list[0].id)
         }
       } catch (err) {
-        setBootError(err.message)
+        clearToken()
+        setUser(null)
       } finally {
         setBooting(false)
       }
     })()
   }, [refresh])
-
-  function askToken() {
-    const token = window.prompt('输入访问口令（没有就留空）', getToken())
-    if (token === null) return
-    setToken(token.trim())
-    setHasToken(!!token.trim())
-    window.location.reload()
-  }
 
   async function newSession() {
     const created = await createSession('新会话')
@@ -85,22 +85,8 @@ export default function App() {
 
   if (booting) return <div className="app">加载中……</div>
 
-  if (bootError) {
-    return (
-      <div className="app">
-        <div className="page">
-          <div className="card">
-            <div className="answer">需要访问口令才能使用。</div>
-            <div className="meta">{bootError}</div>
-            <div className="bar">
-              <button className="agent-btn" onClick={askToken}>
-                设置口令
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+  if (!user) {
+    return <LoginView onDone={() => window.location.reload()} />
   }
 
   return (
@@ -110,8 +96,15 @@ export default function App() {
           <img className="logo" src="/logo.svg" alt="logo" />
           <h1>金鉴 AI</h1>
           <span className="tag">金融合规 · 行情 · 计算</span>
-          <button className="token-btn" onClick={askToken}>
-            {hasToken ? '口令已设置' : '设置口令'}
+          <span className="user-chip">{user.username}</span>
+          <button
+            className="token-btn"
+            onClick={() => {
+              clearToken()
+              window.location.reload()
+            }}
+          >
+            退出
           </button>
         </div>
         <nav>

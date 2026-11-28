@@ -9,20 +9,38 @@ export function setToken(token) {
   localStorage.setItem('access_token', token || '')
 }
 
-function tokenHeader() {
-  const token = getToken()
-  return token ? { 'X-Access-Token': token } : {}
-}
-
 function authHeaders() {
   const headers = { ...JSON_HEADERS }
   const token = getToken()
-  if (token) headers['X-Access-Token'] = token
+  if (token) headers.Authorization = `Bearer ${token}`
   return headers
 }
 
+export function clearToken() {
+  localStorage.removeItem('access_token')
+}
+
+// ---------- 登录 ----------
+export async function authLogin(username, password) {
+  return toJson(await fetch('/api/auth/login', {
+    method: 'POST', headers: JSON_HEADERS,
+    body: JSON.stringify({ username, password }),
+  }))
+}
+
+export async function authRegister(username, password) {
+  return toJson(await fetch('/api/auth/register', {
+    method: 'POST', headers: JSON_HEADERS,
+    body: JSON.stringify({ username, password }),
+  }))
+}
+
+export async function getMe() {
+  return toJson(await fetch('/api/auth/me', { headers: authHeaders() }))
+}
+
 async function toJson(res) {
-  if (res.status === 401) throw new Error('需要访问口令，请点右上角“设置口令”')
+  if (res.status === 401) throw new Error('请先登录')
   if (res.status === 429) throw new Error('请求太频繁，请稍后再试')
   if (!res.ok) throw new Error('HTTP ' + res.status)
   return res.json()
@@ -30,7 +48,7 @@ async function toJson(res) {
 
 // 通用 SSE 读取：按行解析 data: 帧
 async function readSSE(res, onEvent) {
-  if (res.status === 401) throw new Error('需要访问口令，请点右上角“设置口令”')
+  if (res.status === 401) throw new Error('请先登录')
   if (res.status === 429) throw new Error('请求太频繁，请稍后再试')
   if (!res.ok) throw new Error('HTTP ' + res.status)
   const reader = res.body.getReader()

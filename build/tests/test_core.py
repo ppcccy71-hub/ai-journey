@@ -13,10 +13,12 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 import app as app_module
+import auth
 import brief
 import finance_tools
 import market
 import notify
+import store
 import monitor
 import web_tools
 import kb_index
@@ -82,26 +84,42 @@ class _Client:
 
 
 class _Request:
-    headers = {}
-    client = _Client()
+    def __init__(self, headers=None):
+        self.headers = headers or {}
+        self.client = _Client()
 
 
 def test_rate_limit_blocks_after_quota(monkeypatch):
-    monkeypatch.setattr(app_module, "ACCESS_TOKEN", "")
     monkeypatch.setattr(app_module, "RATE_LIMIT_PER_MIN", 3)
     app_module._HITS.clear()
     for _ in range(3):
-        app_module.guard(_Request())
+        app_module.rate_limit(_Request())
     with pytest.raises(HTTPException) as exc:
-        app_module.guard(_Request())
+        app_module.rate_limit(_Request())
     assert exc.value.status_code == 429
 
 
-def test_access_token_required(monkeypatch):
-    monkeypatch.setattr(app_module, "ACCESS_TOKEN", "secret")
+def test_login_required():
     with pytest.raises(HTTPException) as exc:
-        app_module.guard(_Request())
+        auth.current_user(_Request())
     assert exc.value.status_code == 401
+
+
+def test_admin_token_accepted():
+    assert auth.current_user(_Request(headers={"x-access-token": "secret"}), "secret")["admin"] is True
+
+
+def test_register_login_token(tmp_path, monkeypatch):
+    monkeypatch.setattr(store, "DB", tmp_path / "auth.db")
+    auth.init()
+    user = auth.register("alice", "secret123")
+    assert auth.login("alice", "secret123")["id"] == user["id"]
+    token = auth.create_token(user)
+    assert auth.verify_token(token)["username"] == "alice"
+    with pytest.raises(ValueError):
+        auth.register("alice", "secret123")
+    with pytest.raises(ValueError):
+        auth.login("alice", "wrongpass")
 
 
 # ---------- 监控规则 ----------
@@ -190,13 +208,13 @@ def test_brief_cache(monkeypatch):
         calls["n"] += 1
         return "今日半导体领涨，自选股宁德时代走强。注意波动风险。", {"prompt_tokens": 10, "completion_tokens": 20}
 
-    monkeypatch.setattr(brief, "collect", lambda: (
+    monkeypatch.setattr(brief, "collect", lambda user_id=0: (
         [{"name": "半导体", "change_pct": 3.2, "leader": "某股"}],
         [{"name": "宁德时代", "change_pct": 5.7, "turnover": 1.7}],
         [],
     ))
     monkeypatch.setattr(brief.llm, "stream_chat", fake_chat)
-    brief._CACHE.update({"text": "", "at": 0.0, "watch": 0})
+    brief._CACHE.clear()
 
     first = brief.generate()
     second = brief.generate()
@@ -207,10 +225,10 @@ def test_brief_cache(monkeypatch):
 
 def test_brief_skips_llm_without_watch(monkeypatch):
     calls = {"n": 0}
-    monkeypatch.setattr(brief, "collect", lambda: (
+    monkeypatch.setattr(brief, "collect", lambda user_id=0: (
         [{"name": "半导体", "change_pct": 3.2, "leader": "某股"}], [], []))
     monkeypatch.setattr(brief.llm, "stream_chat", lambda *a, **k: calls.update(n=calls["n"] + 1))
-    brief._CACHE.update({"text": "", "at": 0.0, "watch": 0})
+    brief._CACHE.clear()
     data = brief.generate()
     assert "还没有自选股" in data["text"]
     assert calls["n"] == 0

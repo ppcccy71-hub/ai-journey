@@ -187,6 +187,14 @@ ALERT_WEBHOOK_TYPE=auto   # auto / feishu / dingtalk / generic
 
 收盘推送：工作日 `BRIEF_PUSH_HOUR`（默认 16 点）自动生成并推送；也可手动 `POST /brief/push`。
 
+## 用户与权限
+
+- 注册 / 登录：用户名 + 密码（PBKDF2-SHA256，12 万轮），签发 HMAC token（7 天）
+- 隔离范围：会话、消息、用量统计、自选股、告警、今日综述
+- 共享范围：知识库（金融合规/技术文档是公共资料）
+- 兼容原有访问口令：登录页点「用访问口令登录」，或请求头带 `X-Access-Token`
+- 管理接口（知识库增删、推送测试）目前所有登录用户可用，生产应加角色
+
 ## 技术栈
 
 | 层 | 选型 |
@@ -342,6 +350,9 @@ python step8_embed.py
 | GET | `/notify/status` | Webhook 是否配置 |
 | POST | `/notify/test` | 发送一条测试推送 |
 | POST | `/brief/push` | 手动生成并推送收盘综述 |
+| POST | `/auth/register` | 注册并返回 token |
+| POST | `/auth/login` | 登录并返回 token |
+| GET | `/auth/me` | 当前用户 |
 
 `/ask` 与 `/ask/stream` 额外支持 `web: true`，开启联网检索。
 | GET | `/stats` | 汇总统计 |

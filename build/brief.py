@@ -17,7 +17,7 @@ CN = ZoneInfo("Asia/Shanghai")
 PUSH_HOUR = int(os.environ.get("BRIEF_PUSH_HOUR", "16"))
 ENABLE_DAILY = os.environ.get("ENABLE_DAILY_BRIEF", "1") == "1"
 STATE = {"last_date": ""}
-_CACHE = {"text": "", "at": 0.0, "watch": 0}
+_CACHE = {}          # user_id -> {text, at, watch}
 
 SYSTEM = (
     "你是金融信息助手。根据给定的板块、自选股和告警数据，写一段 120 字以内的今日综述："
@@ -26,14 +26,14 @@ SYSTEM = (
 )
 
 
-def collect():
+def collect(user_id=0):
     """收集数据；任何一块失败都不影响其他块。"""
     try:
         sectors = market.sectors(5)
     except Exception:
         sectors = []
     try:
-        watch = market.fetch([w["symbol"] for w in watch_store.list_watch()])
+        watch = market.fetch([w["symbol"] for w in watch_store.list_watch(user_id)])
     except Exception:
         watch = []
     try:
@@ -52,12 +52,13 @@ def _prompt(sectors, watch, alerts):
     return json.dumps(payload, ensure_ascii=False)
 
 
-def generate(force=False):
+def generate(force=False, user_id=0):
     now = time.time()
-    if not force and _CACHE["text"] and now - _CACHE["at"] < CACHE_SECONDS:
-        return {"text": _CACHE["text"], "generated_at": _CACHE["at"], "cached": True}
+    cache = _CACHE.setdefault(user_id, {"text": "", "at": 0.0, "watch": 0})
+    if not force and cache["text"] and now - cache["at"] < CACHE_SECONDS:
+        return {"text": cache["text"], "generated_at": cache["at"], "cached": True}
 
-    sectors, watch, alerts = collect()
+    sectors, watch, alerts = collect(user_id)
     if not sectors and not watch:
         return {"text": "暂时拿不到行情数据，稍后再试。", "generated_at": now, "cached": False}
 
@@ -75,7 +76,7 @@ def generate(force=False):
         except Exception as exc:
             text = f"综述生成失败：{type(exc).__name__}，可稍后刷新。"
 
-    _CACHE.update({"text": text, "at": now, "watch": len(watch)})
+    cache.update({"text": text, "at": now, "watch": len(watch)})
     return {"text": text, "generated_at": now, "cached": False}
 
 
@@ -84,9 +85,9 @@ def should_push(now, last_date):
     return now.weekday() < 5 and now.hour == PUSH_HOUR and now.strftime("%Y-%m-%d") != last_date
 
 
-def push_daily(force=False):
+def push_daily(force=False, user_id=0):
     """生成收盘综述并推送。"""
-    data = generate(force=True)
+    data = generate(force=True, user_id=user_id)
     import notify
     result = notify.send_text(f"【收盘综述】{datetime.now(CN).strftime('%Y-%m-%d')}\n{data['text']}")
     return {"text": data["text"], "push": result}

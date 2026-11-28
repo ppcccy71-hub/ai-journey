@@ -60,19 +60,20 @@ def in_trading_hours(now=None):
     return (9 * 60 + 30 <= minutes <= 11 * 60 + 30) or (13 * 60 <= minutes <= 15 * 60)
 
 
-def scan():
-    """扫描一次自选股，返回新增告警数。"""
-    items = watch_store.list_watch()
+def scan(user_id=None):
+    """扫描自选股，返回新增告警数；user_id=None 表示扫描全部用户。"""
+    items = watch_store.list_watch(user_id)
     if not items:
         STATE["last_scan"] = time.time()
         STATE["last_count"] = 0
         return 0
 
-    quotes = market.fetch([it["symbol"] for it in items])
+    quotes = {q["symbol"]: q for q in market.fetch([it["symbol"] for it in items])}
     created = 0
     now = time.time()
-    for q in quotes:
-        if not q["name"]:
+    for it in items:
+        q = quotes.get(it["symbol"][-6:])
+        if not q or not q["name"]:
             continue
         watch_store.update_name(q["symbol"], q["name"])
         for rule in RULES:
@@ -80,14 +81,15 @@ def scan():
                 break
             if not rule["hit"](q):
                 continue
-            if now - watch_store.last_alert_at(q["symbol"], rule["key"]) < COOLDOWN:
+            if now - watch_store.last_alert_at(it["symbol"], rule["key"], it["user_id"]) < COOLDOWN:
                 continue
             analysis = analyze(q, rule["label"])
-            alert_id = watch_store.add_alert(q["symbol"], q["name"], rule["key"],
-                                             rule["title"](q), q["price"], q["change_pct"], analysis)
+            alert_id = watch_store.add_alert(it["symbol"], q["name"], rule["key"],
+                                             rule["title"](q), q["price"], q["change_pct"], analysis,
+                                             it["user_id"])
             created += 1
             notify.send({
-                "id": alert_id, "symbol": q["symbol"], "name": q["name"],
+                "id": alert_id, "symbol": it["symbol"], "name": q["name"],
                 "title": rule["title"](q), "price": q["price"],
                 "change_pct": q["change_pct"], "analysis": analysis,
             })
