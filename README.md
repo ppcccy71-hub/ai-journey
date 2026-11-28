@@ -1,18 +1,22 @@
 # ai-journey
 
-AI 应用开发的练习仓库，包含一个可运行的本地知识库助手（RAG + Agent），以及学习过程中的示例代码和笔记。
+面向 AI 应用岗位的项目仓库：RAG 知识库问答 + Agent 工具调用 + MCP + 多知识库 + 金融合规 + 自选股监控。
+
+在线 Demo：https://earn-all-you-want.up.railway.app（访问口令 PCAI1907）
+
+![CI](https://github.com/ppcccy71-hub/ai-journey/actions/workflows/ci.yml/badge.svg)
 
 ## 目录
 
 ```
 ai-journey/
-├── build/         后端应用与学习步骤脚本（详见 build/README.md）
-├── frontend/      React 前端
-├── basics/        基础概念的可运行示例
-├── archive/       早期练习与参考实现
-├── start.ps1      一键启动脚本
-├── PLAN.md        学习路线
-└── progress.md    进度与指标
+├── build/            后端（RAG / Agent / MCP / 监控）
+├── frontend/         React 前端
+├── docs/             架构图与 logo
+├── Dockerfile
+├── docker-compose.yml
+├── railway.json
+└── start.ps1
 ```
 
 ## 运行
@@ -23,20 +27,15 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 
 需要先在根目录创建 `.env`（配置项见 `build/README.md`）。
 
-## 示例代码
-
-`basics/` 下的六个脚本分别演示：API 调用与计费、SSE 流式、生成器、异步阻塞、最小 FastAPI 服务、文件存储。均为独立可运行脚本。
-
-## 项目材料
+## 文档
 
 | 材料 | 路径 |
 |---|---|
 | 架构图 | `docs/architecture.svg` |
-| 简历条目与面试追问 | `docs/resume.md` |
-| 评测数据 | `build/RESULTS.md` |
 | 项目说明 | `build/README.md` |
+| 评测数据 | `build/RESULTS.md` |
 
 ## 说明
 
-- `archive/` 为过程材料，不参与运行
-- 数据库、向量索引之外的数据均不入库，敏感配置见 `.gitignore`
+- 仓库只保留运行所需的代码与文档，学习材料和过程文件已移除
+- `.env` 不入库；数据库、向量索引之外的数据均被忽略

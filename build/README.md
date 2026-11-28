@@ -155,28 +155,41 @@ AGENT_WORKSPACE=/data/agent_workspace
 
 ```
 build/
-├── app.py               FastAPI 应用（问答 / Agent / 会话 / 统计）
+├── app.py               FastAPI 应用（问答 / Agent / 知识库 / 监控）
 ├── llm.py               模型调用与成本计算
-├── store.py             SQLite 存储层
-├── step1_load_docs.py   读取文档
-├── step2_chunks.py      文本切块
-├── step3_retrieve.py    关键词检索
-├── step8_embed.py       生成向量索引
-├── step9_vector.py      向量检索
+├── store.py             会话与用量存储
+├── ingest_docs.py       FastAPI 文档接入与切块
+├── kb_index.py          多知识库索引与检索
+├── kb_store.py          知识库元数据
+├── step2_chunks.py      基础切块（被 step8 复用）
+├── step3_retrieve.py    关键词检索（评测对比用）
+├── step8_embed.py       embedding 调用
+├── step9_vector.py      向量检索 / 翻译 / 融合
+├── rerank.py            LLM 重排
+├── query_rewrite.py     多轮查询改写
 ├── step13_agent.py      Agent 循环与工具定义
-├── numpy_tool.py        numpy 计算工具（AST 白名单，不用 eval）
-├── step14_task_eval.py  Agent 任务评测
+├── agent_runs.py        流式执行与写操作审批
+├── numpy_tool.py        numpy 计算工具（AST 白名单）
 ├── mcp_server.py        MCP 服务（search_docs / calculator）
-├── mcp_client_demo.py   MCP 客户端测试
-├── test_safety.py       路径安全单元测试
-├── docs/                知识库文档
+├── mcp_bridge.py        MCP 客户端桥接
+├── market.py            行情抓取与解析
+├── monitor.py           异动规则与调度
+├── watch_store.py       自选股与告警存储
+├── step14_task_eval.py  Agent 任务评测
+├── eval_*.py            检索 / 改写 / 金融 / 知识库评测脚本
+├── tests/               单元测试
+├── docs/                示例文档
 ├── eval/                评测集
-├── vectors.json         向量索引
-└── assistant.db         会话与成本数据（不入库）
+└── vectors.json         向量索引
+```
 
+前端：
+
+```
 frontend/
-├── src/api.js           接口封装
-├── src/views/           问答 / Agent / 统计 三个页面
+├── src/api.js           接口封装（含 SSE 解析）
+├── src/App.jsx          全局状态与标签页
+├── src/views/           问答 / 知识库 / 监控 / Agent / 统计
 └── vite.config.js       开发代理配置
 ```
 
