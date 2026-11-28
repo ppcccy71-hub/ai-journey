@@ -245,3 +245,33 @@ def test_notify_auto_detect(monkeypatch):
 def test_notify_unconfigured(monkeypatch):
     monkeypatch.setattr(notify, "URL", "")
     assert notify.send({"name": "x"})["sent"] is False
+
+
+# ---------- 收盘推送 / 免打扰 ----------
+def test_should_push_weekday_at_hour():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    cn = ZoneInfo("Asia/Shanghai")
+    assert brief.should_push(datetime(2026, 11, 25, 16, 2, tzinfo=cn), "")
+    assert not brief.should_push(datetime(2026, 11, 25, 15, 0, tzinfo=cn), "")
+    assert not brief.should_push(datetime(2026, 11, 25, 16, 2, tzinfo=cn), "2026-11-25")
+    assert not brief.should_push(datetime(2026, 11, 28, 16, 2, tzinfo=cn), "")
+
+
+def test_quiet_hours_wrap(monkeypatch):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    cn = ZoneInfo("Asia/Shanghai")
+    monkeypatch.setattr(notify, "QUIET_START", "22:00")
+    monkeypatch.setattr(notify, "QUIET_END", "08:00")
+    assert notify.in_quiet(datetime(2026, 11, 25, 23, 0, tzinfo=cn))
+    assert notify.in_quiet(datetime(2026, 11, 26, 7, 30, tzinfo=cn))
+    assert not notify.in_quiet(datetime(2026, 11, 25, 12, 0, tzinfo=cn))
+
+
+def test_send_text_skips_in_quiet(monkeypatch):
+    monkeypatch.setattr(notify, "URL", "https://example.com/hook")
+    monkeypatch.setattr(notify, "in_quiet", lambda now=None: True)
+    result = notify.send_text("test")
+    assert result["sent"] is False
+    assert result["reason"] == "免打扰时段"

@@ -23,6 +23,8 @@
 - **联网检索**：问答可选「联网」，先搜索再抓网页正文回答，来源显示为链接；Agent 新增 `web_search` / `fetch_url` 两个工具
 - **今日综述**：首页聚合板块/自选/告警，模型生成 120 字简报；10 分钟缓存，没有自选股时不调模型
 - **Webhook 推送**：新告警可推到飞书/钉钉/企微，自动识别平台；`/notify/test` 可先测通
+- **收盘综述推送**：工作日 16:00 自动生成收盘综述并推送；支持手动 `/brief/push`
+- **免打扰**：`ALERT_QUIET_START/END` 配置时段，时段内不推送但仍入库
 - **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
 
 ## 知识库
@@ -181,6 +183,10 @@ ALERT_WEBHOOK_TYPE=auto   # auto / feishu / dingtalk / generic
 
 推送失败只记录结果，不影响告警入库；配好后可先 `POST /notify/test` 验证。
 
+免打扰：`ALERT_QUIET_START=22:00`、`ALERT_QUIET_END=08:00`（支持跨天），时段内不推送、但告警照常入库。
+
+收盘推送：工作日 `BRIEF_PUSH_HOUR`（默认 16 点）自动生成并推送；也可手动 `POST /brief/push`。
+
 ## 技术栈
 
 | 层 | 选型 |
@@ -335,6 +341,7 @@ python step8_embed.py
 | GET | `/brief` | 首页今日综述（缓存 10 分钟） |
 | GET | `/notify/status` | Webhook 是否配置 |
 | POST | `/notify/test` | 发送一条测试推送 |
+| POST | `/brief/push` | 手动生成并推送收盘综述 |
 
 `/ask` 与 `/ask/stream` 额外支持 `web: true`，开启联网检索。
 | GET | `/stats` | 汇总统计 |

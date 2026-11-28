@@ -2,13 +2,21 @@
 # -*- coding: utf-8 -*-
 """首页今日综述：聚合板块/自选/告警，让模型写一段简报，带缓存控成本。"""
 import json
+import os
+import threading
 import time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import llm
 import market
 import watch_store
 
 CACHE_SECONDS = 600
+CN = ZoneInfo("Asia/Shanghai")
+PUSH_HOUR = int(os.environ.get("BRIEF_PUSH_HOUR", "16"))
+ENABLE_DAILY = os.environ.get("ENABLE_DAILY_BRIEF", "1") == "1"
+STATE = {"last_date": ""}
 _CACHE = {"text": "", "at": 0.0, "watch": 0}
 
 SYSTEM = (
@@ -69,3 +77,33 @@ def generate(force=False):
 
     _CACHE.update({"text": text, "at": now, "watch": len(watch)})
     return {"text": text, "generated_at": now, "cached": False}
+
+
+def should_push(now, last_date):
+    """工作日到点且今天没推过。"""
+    return now.weekday() < 5 and now.hour == PUSH_HOUR and now.strftime("%Y-%m-%d") != last_date
+
+
+def push_daily(force=False):
+    """生成收盘综述并推送。"""
+    data = generate(force=True)
+    import notify
+    result = notify.send_text(f"【收盘综述】{datetime.now(CN).strftime('%Y-%m-%d')}\n{data['text']}")
+    return {"text": data["text"], "push": result}
+
+
+def daily_loop():
+    while True:
+        try:
+            now = datetime.now(CN)
+            if ENABLE_DAILY and should_push(now, STATE["last_date"]):
+                STATE["last_date"] = now.strftime("%Y-%m-%d")
+                push_daily()
+        except Exception as exc:
+            print(f"[brief] 收盘推送失败：{type(exc).__name__}: {exc}")
+        time.sleep(60)
+
+
+def start():
+    if ENABLE_DAILY:
+        threading.Thread(target=daily_loop, daemon=True).start()

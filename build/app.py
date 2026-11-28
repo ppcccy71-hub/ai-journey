@@ -67,6 +67,7 @@ MODEL_V, CHUNKS = s9.load_vectors()
 kb_store.init()
 kb_index.ensure_default()
 monitor.start()
+brief.start()
 
 ENABLE_RERANK = os.environ.get("ENABLE_RERANK", "1") == "1"      # 检索后重排
 ENABLE_REWRITE = os.environ.get("ENABLE_REWRITE", "1") == "1"    # 多轮查询改写
@@ -508,7 +509,8 @@ def get_brief(request: Request, force: int = 0):
 @app.get("/notify/status")
 def notify_status(request: Request):
     guard(request)
-    return {"configured": bool(notify.URL), "type": notify.kind() if notify.URL else None}
+    return {"configured": bool(notify.URL), "type": notify.kind() if notify.URL else None,
+            "quiet": notify.in_quiet(), "quiet_window": f"{notify.QUIET_START}-{notify.QUIET_END}" if notify.QUIET_START and notify.QUIET_END else ""}
 
 
 @app.post("/notify/test")
@@ -520,6 +522,12 @@ def notify_test(request: Request):
         "analysis": "这是一条测试推送，收到即表示 Webhook 配置正确。",
     })
     return result
+
+
+@app.post("/brief/push")
+def push_brief(request: Request):
+    guard(request)
+    return brief.push_daily(force=True)
 
 
 @app.get("/metrics")
