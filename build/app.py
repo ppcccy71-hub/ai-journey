@@ -14,6 +14,7 @@ import llm
 import step9_vector as s9
 import step8_embed as s8
 import step13_agent as agent
+import web_tools
 import store
 import agent_runs
 import kb_index
@@ -98,6 +99,7 @@ class AskRequest(BaseModel):
     min_score: float = Field(0.45, ge=0, le=1)
     mode: str = Field("quality", pattern="^(speed|quality)$", description="speed=向量 top5，quality=top20+rerank")
     kb: str = Field("all", max_length=40, description="知识库 ID，all=全部库")
+    web: bool = Field(False, description="联网检索：用网页搜索结果回答")
 
 
 class SessionCreate(BaseModel):
@@ -131,6 +133,15 @@ def search(req: AskRequest):
 
     拒答阈值用召回阶段的余弦最高分，不能被 rerank 的排序分替代。
     """
+    if getattr(req, "web", False):
+        try:
+            chunks = web_tools.web_chunks(req.question)
+        except Exception:
+            chunks = []
+        if chunks:
+            hits = [(1.0 - i * 0.01, c) for i, c in enumerate(chunks)]
+            return hits[: req.top_k], 1.0
+
     history = history_of(req.session_id) if ENABLE_REWRITE else []
     query = query_rewrite.rewrite(history, req.question) if history else req.question
 

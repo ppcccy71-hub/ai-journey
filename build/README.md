@@ -19,6 +19,7 @@
 - **检索模式**：质量（top-20 + LLM rerank）与速度（向量 top-5）可切换；多轮追问自动改写查询
 - **多知识库**：支持新建知识库、上传 Markdown / TXT / PDF，按库隔离检索；**默认检索全部库**，也可选择单个库缩小范围
 - **自选股监控**：添加股票代码，交易时段每 5 分钟轮询；涨跌幅/振幅/换手率触发放大规则后调用模型写解读并生成告警，30 分钟内同规则不重复
+- **联网检索**：问答可选「联网」，先搜索再抓网页正文回答，来源显示为链接；Agent 新增 `web_search` / `fetch_url` 两个工具
 - **MCP Server**：把检索与计算封装为 MCP 工具，Claude Desktop / Cursor 等客户端可直接调用
 
 ## 知识库
@@ -129,6 +130,21 @@ AGENT_WORKSPACE=/data/agent_workspace
 - `/metrics` 暴露 Prometheus 文本：请求数、5xx、平均延迟、问答次数、token、成本、知识库数
 - 单元测试：`python -m pytest build/tests -q`（沙箱、切块、限流、口令、API 冒烟，不调用外部模型）
 - GitHub Actions：push 自动跑后端测试 + 前端构建
+
+## 联网
+
+问答页的「联网」开关会绕过本地知识库，改用网页结果回答：
+
+1. 搜索：优先 `TAVILY_API_KEY`；没配就用 DuckDuckGo，再回退 Bing
+2. 抓取前 2 个网页正文（每页最多 1800 字）作为资料
+3. 回答仍带 [编号]，来源显示为可点击链接
+4. Agent 也新增 `web_search` 和 `fetch_url` 两个工具
+
+安全与限制：
+
+- 抓取只允许 http/https，禁止私网、回环、链路本地地址（SSRF 防护）
+- 单页最多读 2MB、15 秒超时；不支持的 Content-Type 直接拒绝
+- 联网每题多 5–15 秒；搜索引擎可能限流或改版，失败时回退本地知识库
 
 ## 监控
 
@@ -290,6 +306,8 @@ python step8_embed.py
 | POST | `/alerts/{id}/ack` | 标记告警已读 |
 | POST | `/monitor/scan` | 手动触发一次扫描 |
 | GET | `/monitor/status` | 监控状态（交易时段、上次扫描） |
+
+`/ask` 与 `/ask/stream` 额外支持 `web: true`，开启联网检索。
 | GET | `/stats` | 汇总统计 |
 | GET | `/metrics` | Prometheus 指标 |
 | GET | `/stats/daily?days=7` | 按天统计 |
@@ -363,6 +381,7 @@ Agent 任务评测（11 题，覆盖检索后写文件、计算、numpy、缺文
 - 向量索引是 14MB 的 JSON，启动时整体加载进内存
 - 中文提问会多一次翻译调用，检索耗时增加约 1.5 秒；quality 模式的 rerank 再增加 1–2 秒
 - 行情来自腾讯免费接口，非官方，可能限流或改字段；监控是 5 分钟级轮询，只在交易时段运行，**不构成投资建议**
+- 联网检索依赖搜索引擎页面结构，可能限流或解析失效；抓取只做正文抽取，复杂页面效果一般
 - SQLite 单机存储，不支持多实例部署
 - 鉴权是单一访问口令，不是多用户体系；限流按 IP
 - 模型与向量调用为同步阻塞，并发依赖线程池

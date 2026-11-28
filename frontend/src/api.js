@@ -81,11 +81,11 @@ export async function deleteSession(sessionId) {
 }
 
 // ---------- 问答（SSE 流式） ----------
-export async function askStream(question, sessionId, onEvent, mode = 'quality', kb = 'fastapi') {
+export async function askStream(question, sessionId, onEvent, mode = 'quality', kb = 'fastapi', web = false) {
   const res = await fetch('/api/ask/stream', {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ question, session_id: sessionId, mode, kb }),
+    body: JSON.stringify({ question, session_id: sessionId, mode, kb, web }),
   })
   await readSSE(res, onEvent)
 }

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import mcp_bridge
 import numpy_tool
+import web_tools
 import step9_vector as s9
 
 ROOT = Path(__file__).resolve().parent
@@ -86,6 +87,18 @@ LOCAL_TOOLS = [
         "name": "list_files",
         "description": "列出工作区里的文件",
         "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "web_search",
+        "description": "联网搜索，返回标题、链接和摘要。适合查最新信息或本地知识库没有的内容",
+        "parameters": {"type": "object",
+                       "properties": {"query": {"type": "string", "description": "搜索词"}},
+                       "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "fetch_url",
+        "description": "抓取一个网页的正文，返回标题和文本",
+        "parameters": {"type": "object",
+                       "properties": {"url": {"type": "string", "description": "http/https 链接"}},
+                       "required": ["url"]}}},
 ]
 
 _OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
@@ -147,6 +160,14 @@ def execute(name, args, approve=None):
         if name == "list_files":
             files = sorted(p.name for p in WORKSPACE.iterdir() if p.is_file())
             return "、".join(files) if files else "（工作区是空的）"
+        if name == "web_search":
+            results = web_tools.search(args["query"], limit=5)
+            if not results:
+                return "没有搜到结果（可能是网络或搜索引擎限制）"
+            return "\n\n".join(f"{r['title']}\n{r['url']}\n{r['snippet']}" for r in results)
+        if name == "fetch_url":
+            page = web_tools.fetch(args["url"], max_chars=1500)
+            return f"{page['title']}\n{page['text']}"
         return f"错误：没有名为 {name} 的工具"
     except Exception as e:
         return f"工具执行失败：{type(e).__name__}: {e}"

@@ -10,6 +10,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
   const [loading, setLoading] = useState(false)
   const [input, setInput] = useState('')
   const [mode, setMode] = useState('quality')
+  const [web, setWeb] = useState(false)
   const boxRef = useRef(null)
   const bottomRef = useRef(null)
 
@@ -73,7 +74,7 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
               `${u.completion_tokens || 0} · $${(evt.cost || 0).toFixed(6)}`,
           )
         }
-      }, mode, kb)
+      }, mode, kb, web)
     } catch (err) {
       acc = '出错了：' + err.message
     } finally {
@@ -132,11 +133,30 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
       <div className="chat-footer">
         {sources.length > 0 && (
           <div className="chips">
-            {sources.map((s) => (
-              <span key={s.index} className="chip">
-                [{s.index}] {s.source} · {s.score}
-              </span>
-            ))}
+            {sources.map((s) => {
+              const isUrl = s.source.startsWith('http')
+              let label = s.source
+              if (isUrl) {
+                try {
+                  label = new URL(s.source).hostname
+                } catch {
+                  label = s.source
+                }
+              }
+              return (
+                <span key={s.index} className="chip">
+                  [{s.index}]{' '}
+                  {isUrl ? (
+                    <a href={s.source} target="_blank" rel="noreferrer">
+                      {label}
+                    </a>
+                  ) : (
+                    s.source
+                  )}{' '}
+                  · {s.score}
+                </span>
+              )
+            })}
           </div>
         )}
         <div className="meta-row">
@@ -154,6 +174,13 @@ export default function AskView({ sessionId, onChanged, onNeedSession, kb, kbs, 
             </button>
             <button className={mode === 'speed' ? 'on' : ''} onClick={() => setMode('speed')}>
               速度
+            </button>
+            <button
+              className={web ? 'on' : ''}
+              onClick={() => setWeb((v) => !v)}
+              title="用网页搜索结果回答；关闭时只查本地知识库"
+            >
+              联网
             </button>
           </div>
           <div className="meta">{meta}</div>

@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 
 import app as app_module
 import monitor
+import web_tools
 import kb_index
 import step13_agent as agent
 
@@ -114,3 +115,20 @@ def test_trading_hours():
     assert monitor.in_trading_hours(datetime(2026, 11, 25, 10, 0, tzinfo=cn))
     assert not monitor.in_trading_hours(datetime(2026, 11, 25, 12, 0, tzinfo=cn))
     assert not monitor.in_trading_hours(datetime(2026, 11, 28, 10, 0, tzinfo=cn))
+
+
+# ---------- 联网工具 ----------
+def test_web_blocks_private_urls():
+    for url in ("http://127.0.0.1/admin", "http://localhost:8000/", "file:///etc/passwd"):
+        with pytest.raises(ValueError):
+            web_tools.fetch(url)
+
+
+def test_html_to_text_strips_tags():
+    text = web_tools.html_to_text("<h1>标题</h1><script>alert(1)</script><p>正文内容</p>")
+    assert "标题" in text and "正文内容" in text
+    assert "alert" not in text
+
+
+def test_page_title():
+    assert web_tools.page_title("<html><head><title>测试页</title></head></html>") == "测试页"
